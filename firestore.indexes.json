@@ -1,0 +1,55 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "ApptMeeting",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "doctorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startTime",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ApptMeeting",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "docType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "personId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startTime",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ApptMeeting",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startTime",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

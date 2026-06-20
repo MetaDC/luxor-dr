@@ -1,0 +1,506 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../../controllers/auth_ctrl.dart';
+import '../../../../models/doctor_model.dart';
+import '../../../../utils/app_theme.dart';
+import '../contacts/contacts_view.dart';
+
+class ProfileView extends StatelessWidget {
+  const ProfileView({super.key});
+
+  void _showDoctorPicker(BuildContext context, AuthCtrl auth) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _DoctorPickerSheet(auth: auth),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: DrColors.background,
+      body: SafeArea(
+        child: GetBuilder<AuthCtrl>(
+          builder: (auth) {
+            final doctor = auth.currentDoctor;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Profile',
+                    style: GoogleFonts.inter(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: DrColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Doctor card (tappable) ───────────────────────
+                  GestureDetector(
+                    onTap: () => _showDoctorPicker(context, auth),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [DrColors.gradStart, DrColors.gradEnd],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Center(
+                              child: Text(
+                                doctor?.initials ?? 'DR',
+                                style: GoogleFonts.inter(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Dr. ${doctor?.name ?? ''}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  doctor?.specialization ?? '',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                if (auth.allDoctors.length > 1) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.swap_horiz_rounded,
+                                        size: 11,
+                                        color: Colors.white54,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Tap to switch doctor',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11,
+                                          color: Colors.white54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Colors.white70,
+                            size: 22,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ── Menu items ───────────────────────────────────
+                  _MenuItem(
+                    icon: Icons.people_alt_outlined,
+                    label: 'Contacts',
+                    subtitle: 'Patients & meeting contacts with history',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ContactsView(),
+                      ),
+                    ),
+                  ),
+                  _MenuItem(
+                    icon: Icons.notifications_outlined,
+                    label: 'Notifications',
+                    subtitle: 'Manage alerts',
+                    onTap: () {},
+                  ),
+                  _MenuItem(
+                    icon: Icons.settings_outlined,
+                    label: 'Settings',
+                    subtitle: 'App preferences',
+                    onTap: () {},
+                  ),
+                  _MenuItem(
+                    icon: Icons.help_outline_rounded,
+                    label: 'Help & Support',
+                    subtitle: 'FAQs & contact',
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 4),
+                  _MenuItem(
+                    icon: Icons.logout_rounded,
+                    label: 'Log Out',
+                    subtitle: null,
+                    iconColor: DrColors.error,
+                    labelColor: DrColors.error,
+                    onTap: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          title: Text(
+                            'Log Out',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          content: Text(
+                            'Are you sure you want to log out?',
+                            style: GoogleFonts.inter(fontSize: 14),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(context, rootNavigator: true)
+                                      .pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () =>
+                                  Navigator.of(context, rootNavigator: true)
+                                      .pop(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: DrColors.error,
+                              ),
+                              child: const Text('Log Out'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true && context.mounted) {
+                        await auth.logout(context);
+                        if (context.mounted) context.go('/login');
+                      }
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Doctor picker bottom sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DoctorPickerSheet extends StatelessWidget {
+  final AuthCtrl auth;
+  const _DoctorPickerSheet({required this.auth});
+
+  @override
+  Widget build(BuildContext context) {
+    final doctors = auth.allDoctors;
+    final current = auth.currentDoctor;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: DrColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: DrColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Text(
+            'Select Doctor',
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: DrColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'All data will update for the selected doctor',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: DrColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          if (doctors.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'No other doctors found',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: DrColors.textTertiary,
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: doctors.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (_, i) {
+                final doc = doctors[i];
+                final isActive = doc.docId == current?.docId;
+                return _DoctorTile(
+                  doctor: doc,
+                  isActive: isActive,
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (!isActive) auth.switchDoctor(doc);
+                  },
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DoctorTile extends StatelessWidget {
+  final DoctorModel doctor;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _DoctorTile({
+    required this.doctor,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive
+              ? DrColors.primary.withValues(alpha: 0.06)
+              : DrColors.background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isActive ? DrColors.primary : DrColors.border,
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: isActive
+                    ? const LinearGradient(
+                        colors: [DrColors.gradStart, DrColors.gradEnd],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isActive ? null : DrColors.border,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Text(
+                  doctor.initials,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: isActive ? Colors.white : DrColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Dr. ${doctor.name}',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isActive
+                          ? DrColors.primary
+                          : DrColors.textPrimary,
+                    ),
+                  ),
+                  if (doctor.specialization.isNotEmpty)
+                    Text(
+                      doctor.specialization,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: DrColors.textSecondary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (isActive)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: DrColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Active',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: DrColors.primary,
+                  ),
+                ),
+              )
+            else
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: DrColors.textTertiary.withValues(alpha: 0.5),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Menu item
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? subtitle;
+  final VoidCallback onTap;
+  final Color iconColor;
+  final Color labelColor;
+
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+    this.iconColor = DrColors.textSecondary,
+    this.labelColor = DrColors.textPrimary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: DrColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: DrColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: labelColor,
+                      ),
+                    ),
+                    if (subtitle != null)
+                      Text(
+                        subtitle!,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: DrColors.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: DrColors.textTertiary.withValues(alpha: 0.6),
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

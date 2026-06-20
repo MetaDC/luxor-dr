@@ -1,0 +1,36 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "luxor-meeting",
+          "appId": "1:24627747502:android:58fb14c5373fab17a22b3f",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "luxor-meeting",
+          "appId": "1:24627747502:ios:eb3b11bbf15b7cd3a22b3f",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "luxor-meeting",
+          "configurations": {
+            "android": "1:24627747502:android:58fb14c5373fab17a22b3f",
+            "ios": "1:24627747502:ios:eb3b11bbf15b7cd3a22b3f"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-south1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

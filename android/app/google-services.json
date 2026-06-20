@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "24627747502",
+    "project_id": "luxor-meeting",
+    "storage_bucket": "luxor-meeting.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:24627747502:android:58fb14c5373fab17a22b3f",
+        "android_client_info": {
+          "package_name": "com.diwizon.luxor_dr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCAfDPqmvNHualiA03mso9cPiKcXi9Aak"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:24627747502:android:0a388e0f18576617a22b3f",
+        "android_client_info": {
+          "package_name": "com.example.luxor_dr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCAfDPqmvNHualiA03mso9cPiKcXi9Aak"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
