@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,9 +12,112 @@ import 'meetings/meeting_form.dart';
 // HomeShell
 // ─────────────────────────────────────────────────────────────────────────────
 
-class HomeShell extends StatelessWidget {
+class HomeShell extends StatefulWidget {
   final Widget child;
   const HomeShell({super.key, required this.child});
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  StreamSubscription<List<ConnectivityResult>>? _connectivityStream;
+  bool _connectionExist = true;
+  bool _dialogShowing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInitial();
+    _connectivityStream =
+        Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
+  }
+
+  @override
+  void dispose() {
+    _connectivityStream?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkInitial() async {
+    final result = await Connectivity().checkConnectivity();
+    if (mounted) _onConnectivityChanged(result);
+  }
+
+  void _onConnectivityChanged(List<ConnectivityResult> result) {
+    if (!mounted) return;
+    final has = result.any((r) =>
+        r == ConnectivityResult.mobile ||
+        r == ConnectivityResult.wifi ||
+        r == ConnectivityResult.ethernet);
+    setState(() => _connectionExist = has);
+    if (!has && !_dialogShowing) {
+      _showNoConnectionDialog();
+    } else if (has && _dialogShowing) {
+      Navigator.of(context, rootNavigator: true).pop();
+      _dialogShowing = false;
+    }
+  }
+
+  void _showNoConnectionDialog() {
+    _dialogShowing = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          backgroundColor: DrColors.surface,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.wifi_off_rounded,
+                    color: Colors.orange,
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'No Internet Connection',
+                  style: GoogleFonts.inter(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: DrColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please check your network.\nThe app will resume automatically.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: DrColors.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).then((_) {
+      if (mounted) _dialogShowing = false;
+    });
+  }
 
   int _locationIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
@@ -45,7 +151,7 @@ class HomeShell extends StatelessWidget {
     final idx = _locationIndex(context);
     return Scaffold(
       backgroundColor: DrColors.background,
-      body: child,
+      body: widget.child,
       bottomNavigationBar: _FloatingNavBar(
         activeIndex: idx,
         onItemTap: (i) => _onNavTap(context, i),

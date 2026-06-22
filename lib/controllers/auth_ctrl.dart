@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/doctor_model.dart';
@@ -16,6 +18,10 @@ class AuthCtrl extends GetxController {
   String enteredEmail = '';
   DoctorModel? currentDoctor;
   List<DoctorModel> allDoctors = [];
+
+  // Tracks the doc ID of the Firebase-Auth-authenticated doctor.
+  // switchDoctor() never changes this — only the actual login does.
+  String _loggedInDoctorDocId = '';
 
   @override
   void onInit() {
@@ -42,8 +48,31 @@ class AuthCtrl extends GetxController {
           .get();
       if (q.docs.isNotEmpty) {
         currentDoctor = DoctorModel.fromSnap(q.docs.first);
+        _loggedInDoctorDocId = q.docs.first.id;
         update();
+        await _saveFcmToken();
       }
+    } catch (_) {}
+  }
+
+  Future<void> _saveFcmToken() async {
+    if (_loggedInDoctorDocId.isEmpty) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      print("FCM TOKEN: ${token}");
+      if (token != null) {
+        await FBFireStore.doctors.doc(_loggedInDoctorDocId).update({
+          'token': token,
+        });
+      }
+      // Keep token fresh — still saves only to the logged-in doctor's doc.
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+        if (_loggedInDoctorDocId.isNotEmpty) {
+          FBFireStore.doctors.doc(_loggedInDoctorDocId).update({
+            'token': newToken,
+          });
+        }
+      });
     } catch (_) {}
   }
 
@@ -93,8 +122,9 @@ class AuthCtrl extends GetxController {
         'otpTime': Timestamp.fromDate(DateTime.now()),
       });
 
-      // TODO: Call sendOtpToEmail(email, otp) to deliver OTP
-      // TODO: Call sendWhatsAppMessage(phone, message) if needed
+      await FirebaseFunctions.instance
+          .httpsCallable('sendOtpEmail')
+          .call({'email': email.trim().toLowerCase(), 'otp': otp});
 
       enteredEmail = email.trim().toLowerCase();
       otpSent = true;
@@ -192,6 +222,7 @@ class AuthCtrl extends GetxController {
     otpSent = false;
     enteredEmail = '';
     currentDoctor = null;
+    _loggedInDoctorDocId = '';
     update();
   }
 }

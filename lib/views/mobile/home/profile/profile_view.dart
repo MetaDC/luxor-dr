@@ -161,58 +161,130 @@ class ProfileView extends StatelessWidget {
                     onTap: () {},
                   ),
                   const SizedBox(height: 4),
-                  _MenuItem(
-                    icon: Icons.logout_rounded,
-                    label: 'Log Out',
-                    subtitle: null,
-                    iconColor: DrColors.error,
-                    labelColor: DrColors.error,
-                    onTap: () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          title: Text(
-                            'Log Out',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          content: Text(
-                            'Are you sure you want to log out?',
-                            style: GoogleFonts.inter(fontSize: 14),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.of(context, rootNavigator: true)
-                                      .pop(false),
-                              child: const Text('Cancel'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () =>
-                                  Navigator.of(context, rootNavigator: true)
-                                      .pop(true),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: DrColors.error,
-                              ),
-                              child: const Text('Log Out'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true && context.mounted) {
-                        await auth.logout(context);
-                        if (context.mounted) context.go('/login');
-                      }
-                    },
-                  ),
+                  _LogoutMenuItem(auth: auth),
                 ],
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Logout menu item (stateful to manage loading state)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LogoutMenuItem extends StatefulWidget {
+  final AuthCtrl auth;
+  const _LogoutMenuItem({required this.auth});
+
+  @override
+  State<_LogoutMenuItem> createState() => _LogoutMenuItemState();
+}
+
+class _LogoutMenuItemState extends State<_LogoutMenuItem> {
+  bool _loggingOut = false;
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          'Log Out',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Are you sure you want to log out?',
+          style: GoogleFonts.inter(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context, rootNavigator: true).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.of(context, rootNavigator: true).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DrColors.error,
+            ),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _loggingOut = true);
+    await widget.auth.logout(context);
+    if (mounted) {
+      setState(() => _loggingOut = false);
+      context.go('/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: DrColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: DrColors.border),
+      ),
+      child: InkWell(
+        onTap: _loggingOut ? null : _logout,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: DrColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _loggingOut
+                    ? const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: CircularProgressIndicator(
+                          color: DrColors.error,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.logout_rounded,
+                        color: DrColors.error,
+                        size: 20,
+                      ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  _loggingOut ? 'Logging out…' : 'Log Out',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: DrColors.error,
+                  ),
+                ),
+              ),
+              if (!_loggingOut)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: DrColors.textTertiary.withValues(alpha: 0.6),
+                  size: 20,
+                ),
+            ],
+          ),
         ),
       ),
     );

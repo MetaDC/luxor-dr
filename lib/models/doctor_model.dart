@@ -34,11 +34,9 @@ class DoctorModel {
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       manageByIds: List<String>.from(json['manageByIds'] ?? []),
-      token: json['tokens'] ?? '',
-      createdAt:
-          (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt:
-          (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      token: json['token'] ?? '',
+      createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -54,11 +52,9 @@ class DoctorModel {
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       manageByIds: List<String>.from(json['manageByIds'] ?? []),
-      token: json['tokens'] ?? '',
-      createdAt:
-          (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt:
-          (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      token: json['token'] ?? '',
+      createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -74,11 +70,9 @@ class DoctorModel {
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       manageByIds: List<String>.from(json['manageByIds'] ?? []),
-      token: json['tokens'] ?? '',
-      createdAt:
-          (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt:
-          (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      token: json['token'] ?? '',
+      createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

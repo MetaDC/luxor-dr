@@ -50,10 +50,13 @@ GoRouter buildRouter(GoRouterNotifier notifier) {
           ),
           GoRoute(
             path: '/home/schedule',
-            pageBuilder: (context, state) => NoTransitionPage(
-              key: state.pageKey,
-              child: const ScheduleView(),
-            ),
+            pageBuilder: (context, state) {
+              final filter = state.uri.queryParameters['filter'];
+              return NoTransitionPage(
+                key: state.pageKey,
+                child: ScheduleView(initialFilter: filter),
+              );
+            },
           ),
           GoRoute(
             path: '/home/profile',

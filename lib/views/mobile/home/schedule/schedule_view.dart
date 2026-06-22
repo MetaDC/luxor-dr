@@ -16,7 +16,8 @@ import '../meetings/meeting_form.dart';
 enum _TypeFilter { all, appointments, meetings }
 
 class ScheduleView extends StatefulWidget {
-  const ScheduleView({super.key});
+  final String? initialFilter;
+  const ScheduleView({super.key, this.initialFilter});
   @override
   State<ScheduleView> createState() => _ScheduleViewState();
 }
@@ -26,7 +27,7 @@ class _ScheduleViewState extends State<ScheduleView> {
   DateTimeRange? _dateRange;
   String _statusFilter = 'All';
   bool _isRangeMode = false;
-  _TypeFilter _typeFilter = _TypeFilter.all;
+  late _TypeFilter _typeFilter;
 
   List<AppointmentMeetingModel> _fetched = [];
   bool _loading = false;
@@ -44,7 +45,28 @@ class _ScheduleViewState extends State<ScheduleView> {
   @override
   void initState() {
     super.initState();
+    _initFilters();
     _fetchForDate(_selectedDate);
+  }
+
+  void _initFilters() {
+    if (widget.initialFilter == 'appointment') {
+      _typeFilter = _TypeFilter.appointments;
+    } else if (widget.initialFilter == 'meeting') {
+      _typeFilter = _TypeFilter.meetings;
+    } else {
+      _typeFilter = _TypeFilter.all;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ScheduleView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFilter != oldWidget.initialFilter) {
+      setState(() {
+        _initFilters();
+      });
+    }
   }
 
   Future<void> _fetchForDate(DateTime date) async {
