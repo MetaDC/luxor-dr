@@ -42,19 +42,333 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   bool _loading = false;
 
   DateTime? get _startTime => _date != null && _startTOD != null
-      ? DateTime(_date!.year, _date!.month, _date!.day, _startTOD!.hour,
-          _startTOD!.minute)
+      ? DateTime(
+          _date!.year,
+          _date!.month,
+          _date!.day,
+          _startTOD!.hour,
+          _startTOD!.minute,
+        )
       : null;
 
   DateTime? get _endTime => _date != null && _endTOD != null
-      ? DateTime(_date!.year, _date!.month, _date!.day, _endTOD!.hour,
-          _endTOD!.minute)
+      ? DateTime(
+          _date!.year,
+          _date!.month,
+          _date!.day,
+          _endTOD!.hour,
+          _endTOD!.minute,
+        )
       : null;
+
+  String _selectedDateOption = 'today';
+
+  bool _isSameDay(DateTime d1, DateTime d2) {
+    return d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
+  }
+
+  List<TimeOfDay> _getQuickStartTimes() {
+    final now = DateTime.now();
+    final list = <TimeOfDay>[];
+    int startHour = now.hour + 1;
+    for (int i = 0; i < 3; i++) {
+      list.add(TimeOfDay(hour: (startHour + i) % 24, minute: 0));
+    }
+    return list;
+  }
+
+  Widget _buildDateChips() {
+    final today = DateTime.now();
+    final tomorrow = today.add(const Duration(days: 1));
+    final dayAfter = today.add(const Duration(days: 2));
+
+    final isToday = _selectedDateOption == 'today';
+    final isTomorrow = _selectedDateOption == 'tomorrow';
+    final isDayAfter = _selectedDateOption == 'day_after';
+    final isCustom = _selectedDateOption == 'custom';
+
+    final options = [
+      {
+        'id': 'today',
+        'label': 'Today',
+        'subtitle': DateFormat('d MMM, EEE').format(today),
+        'active': isToday,
+        'date': today
+      },
+      {
+        'id': 'tomorrow',
+        'label': 'Tomorrow',
+        'subtitle': DateFormat('d MMM, EEE').format(tomorrow),
+        'active': isTomorrow,
+        'date': tomorrow,
+      },
+      {
+        'id': 'day_after',
+        'label': 'Day After',
+        'subtitle': DateFormat('d MMM, EEE').format(dayAfter),
+        'active': isDayAfter,
+        'date': dayAfter,
+      },
+      {
+        'id': 'custom',
+        'label': 'Custom',
+        'subtitle': (isCustom && _date != null)
+            ? DateFormat('d MMM, EEE').format(_date!)
+            : 'Select',
+        'active': isCustom,
+        'date': _date
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _labelText('Date *'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (int i = 0; i < options.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final opt = options[i];
+                    if (opt['id'] == 'custom') {
+                      final oldDate = _date;
+                      await _pickDate();
+                      if (_date != oldDate) {
+                        setState(() {
+                          _selectedDateOption = 'custom';
+                        });
+                      }
+                    } else {
+                      setState(() {
+                        _date = opt['date'] as DateTime;
+                        _selectedDateOption = opt['id'] as String;
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: options[i]['active'] as bool
+                          ? DrColors.primary
+                          : DrColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: options[i]['active'] as bool
+                            ? DrColors.primary
+                            : DrColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            options[i]['label'] as String,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: options[i]['active'] as bool
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: options[i]['active'] as bool
+                                  ? Colors.white
+                                  : DrColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            options[i]['subtitle'] as String,
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: options[i]['active'] as bool
+                                  ? FontWeight.w500
+                                  : FontWeight.w400,
+                              color: options[i]['active'] as bool
+                                  ? Colors.white.withOpacity(0.85)
+                                  : DrColors.textSecondary.withOpacity(0.7),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStartTimeChips() {
+    final quickTimes = _getQuickStartTimes();
+
+    String? matchedId;
+    for (int i = 0; i < quickTimes.length; i++) {
+      if (_startTOD != null &&
+          _startTOD!.hour == quickTimes[i].hour &&
+          _startTOD!.minute == quickTimes[i].minute) {
+        matchedId = 'quick_$i';
+      }
+    }
+
+    final isCustom = _startTOD != null && matchedId == null;
+    String customLabel = 'Custom';
+    if (isCustom && _startTOD != null) {
+      customLabel = _startTOD!.format(context);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _labelText('Start Time *'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (int i = 0; i < quickTimes.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    final active = matchedId == 'quick_$i';
+                    final time = quickTimes[i];
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          final oldStart = _startTOD;
+                          _startTOD = time;
+                          if (oldStart != null && _endTOD != null) {
+                            final startM = oldStart.hour * 60 + oldStart.minute;
+                            final endM = _endTOD!.hour * 60 + _endTOD!.minute;
+                            final duration = endM - startM;
+                            final newStartM =
+                                _startTOD!.hour * 60 + _startTOD!.minute;
+                            final newEndM = newStartM + duration;
+                            _endTOD = TimeOfDay(
+                              hour: (newEndM ~/ 60) % 24,
+                              minute: newEndM % 60,
+                            );
+                          }
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: active ? DrColors.primary : DrColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: active ? DrColors.primary : DrColors.border,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            time.format(context),
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: active
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: active
+                                  ? Colors.white
+                                  : DrColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+            const SizedBox(width: 6),
+            Expanded(
+              child: InkWell(
+                onTap: _pickStart,
+                borderRadius: BorderRadius.circular(10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isCustom ? DrColors.primary : DrColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isCustom ? DrColors.primary : DrColors.border,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      customLabel,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: isCustom
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: isCustom ? Colors.white : DrColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _prefill();
+
+    if (_date == null) {
+      _date = DateTime.now();
+      _selectedDateOption = 'today';
+    } else {
+      final today = DateTime.now();
+      final tomorrow = today.add(const Duration(days: 1));
+      final dayAfter = today.add(const Duration(days: 2));
+      if (_isSameDay(_date!, today)) {
+        _selectedDateOption = 'today';
+      } else if (_isSameDay(_date!, tomorrow)) {
+        _selectedDateOption = 'tomorrow';
+      } else if (_isSameDay(_date!, dayAfter)) {
+        _selectedDateOption = 'day_after';
+      } else {
+        _selectedDateOption = 'custom';
+      }
+    }
+
+    if (_startTOD == null) {
+      final quickTimes = _getQuickStartTimes();
+      _startTOD = quickTimes.first;
+    }
+    if (_endTOD == null && _startTOD != null) {
+      final startMinutes = _startTOD!.hour * 60 + _startTOD!.minute;
+      final endMinutes = startMinutes + 30;
+      _endTOD = TimeOfDay(
+        hour: (endMinutes ~/ 60) % 24,
+        minute: endMinutes % 60,
+      );
+    }
   }
 
   void _prefill() {
@@ -86,12 +400,63 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     if (d != null && mounted) setState(() => _date = d);
   }
 
+  String _getFormattedEndTime(int extraMinutes) {
+    if (_startTOD == null) return '';
+    final startMinutes = _startTOD!.hour * 60 + _startTOD!.minute;
+    final endMinutes = startMinutes + extraMinutes;
+    final tempTOD = TimeOfDay(
+      hour: (endMinutes ~/ 60) % 24,
+      minute: endMinutes % 60,
+    );
+    return tempTOD.format(context);
+  }
+
+  int? get _selectedDurationMinutes {
+    if (_startTOD == null || _endTOD == null) return null;
+    final startM = _startTOD!.hour * 60 + _startTOD!.minute;
+    final endM = _endTOD!.hour * 60 + _endTOD!.minute;
+    final diff = endM - startM;
+    if (diff == 15 || diff == 30 || diff == 60) {
+      return diff;
+    }
+    return null;
+  }
+
+  void _selectDuration(int minutes) {
+    if (_startTOD == null) {
+      final now = TimeOfDay.now();
+      _startTOD = TimeOfDay(hour: now.hour, minute: now.minute);
+    }
+    final startMinutes = _startTOD!.hour * 60 + _startTOD!.minute;
+    final endMinutes = startMinutes + minutes;
+    setState(() {
+      _endTOD = TimeOfDay(
+        hour: (endMinutes ~/ 60) % 24,
+        minute: endMinutes % 60,
+      );
+    });
+  }
+
   Future<void> _pickStart() async {
     final t = await showTimePicker(
       context: context,
       initialTime: _startTOD ?? TimeOfDay.now(),
     );
-    if (t != null) setState(() => _startTOD = t);
+    if (t != null) {
+      setState(() {
+        if (_startTOD != null && _endTOD != null) {
+          final startM = _startTOD!.hour * 60 + _startTOD!.minute;
+          final endM = _endTOD!.hour * 60 + _endTOD!.minute;
+          final duration = endM - startM;
+          _startTOD = t;
+          final newStartM = _startTOD!.hour * 60 + _startTOD!.minute;
+          final newEndM = newStartM + duration;
+          _endTOD = TimeOfDay(hour: (newEndM ~/ 60) % 24, minute: newEndM % 60);
+        } else {
+          _startTOD = t;
+        }
+      });
+    }
   }
 
   Future<void> _pickEnd() async {
@@ -160,8 +525,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
       shortDescription: _titleCtrl.text.trim().isEmpty
           ? null
           : _titleCtrl.text.trim(),
-      description:
-          _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       cancelledBy: widget.appointment?.cancelledBy,
       cancellationReason: widget.appointment?.cancellationReason,
       cancelledAt: widget.appointment?.cancelledAt,
@@ -187,6 +551,125 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     } else {
       AppSnackbar.error(context, 'Something went wrong. Please try again.');
     }
+  }
+
+  Widget _buildDurationChips() {
+    final durations = [
+      {'label': '15 min', 'minutes': 15},
+      {'label': '30 min', 'minutes': 30},
+      {'label': '1 hr', 'minutes': 60},
+    ];
+
+    final currentDuration = _selectedDurationMinutes;
+    final isCustom =
+        _startTOD != null && _endTOD != null && currentDuration == null;
+
+    final options = [
+      for (var d in durations)
+        {
+          'id': 'dur_${d['minutes']}',
+          'label': d['label'] as String,
+          'subtitle': _getFormattedEndTime(d['minutes'] as int),
+          'active': currentDuration == d['minutes'],
+          'minutes': d['minutes'] as int,
+        },
+      {
+        'id': 'custom',
+        'label': 'Custom',
+        'subtitle': (isCustom && _endTOD != null)
+            ? _endTOD!.format(context)
+            : 'Select',
+        'active': isCustom,
+        'minutes': -1,
+      }
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Duration / End Time',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: DrColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (int i = 0; i < options.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    final opt = options[i];
+                    if (opt['id'] == 'custom') {
+                      _pickEnd();
+                    } else {
+                      _selectDuration(opt['minutes'] as int);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: options[i]['active'] as bool
+                          ? DrColors.primary
+                          : DrColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: options[i]['active'] as bool
+                            ? DrColors.primary
+                            : DrColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            options[i]['label'] as String,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: options[i]['active'] as bool
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: options[i]['active'] as bool
+                                  ? Colors.white
+                                  : DrColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            options[i]['subtitle'] as String,
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: options[i]['active'] as bool
+                                  ? FontWeight.w500
+                                  : FontWeight.w400,
+                              color: options[i]['active'] as bool
+                                  ? Colors.white.withOpacity(0.85)
+                                  : DrColors.textSecondary.withOpacity(0.7),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
   }
 
   @override
@@ -248,11 +731,42 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Type
-                    _labelText('Appointment Type'),
-                    const SizedBox(height: 6),
+
+                    // const SizedBox(height: 16),
+                    // Patient selector
+                    _PatientSelector(
+                      selected: _patient,
+                      onChanged: (p) => setState(() => _patient = p),
+                    ),
+                    if (_patient != null) ...[
+                      const SizedBox(height: 8),
+                      _PatientInfoCard(patient: _patient!),
+                    ],
+                    const SizedBox(height: 16),
+                    _buildDateChips(),
+                    const SizedBox(height: 16),
+                    _buildStartTimeChips(),
+                    const SizedBox(height: 16),
+                    _buildDurationChips(),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      label: 'Title *',
+                      hint: 'e.g. Annual checkup',
+                      controller: _titleCtrl,
+                      textCapitalization: TextCapitalization.sentences,
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // _labelText('Appointment Type'),
+                    // const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: _apptType,
-                      decoration: const InputDecoration(),
+                      decoration: const InputDecoration(
+                        labelText: 'Appointment Type *',
+                        hintText: 'Select appointment type',
+                      ),
                       items: _apptTypes
                           .map(
                             (t) => DropdownMenuItem(
@@ -265,78 +779,6 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                           )
                           .toList(),
                       onChanged: (v) => setState(() => _apptType = v!),
-                    ),
-                    const SizedBox(height: 16),
-                    // Patient selector
-                    _PatientSelector(
-                      selected: _patient,
-                      onChanged: (p) => setState(() => _patient = p),
-                    ),
-                    if (_patient != null) ...[
-                      const SizedBox(height: 8),
-                      _PatientInfoCard(patient: _patient!),
-                    ],
-                    const SizedBox(height: 16),
-                    // Date
-                    _labelText('Date *'),
-                    const SizedBox(height: 6),
-                    _TapField(
-                      icon: Icons.calendar_today_rounded,
-                      text: _date != null
-                          ? DateFormat('EEEE, MMM d, yyyy').format(_date!)
-                          : 'Select date',
-                      hasValue: _date != null,
-                      onTap: _pickDate,
-                    ),
-                    const SizedBox(height: 16),
-                    // Time
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _labelText('Start Time *'),
-                              const SizedBox(height: 6),
-                              _TapField(
-                                icon: Icons.schedule_rounded,
-                                text: _startTOD != null
-                                    ? _startTOD!.format(context)
-                                    : 'Start',
-                                hasValue: _startTOD != null,
-                                onTap: _pickStart,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _labelText('End Time *'),
-                              const SizedBox(height: 6),
-                              _TapField(
-                                icon: Icons.schedule_rounded,
-                                text: _endTOD != null
-                                    ? _endTOD!.format(context)
-                                    : 'End',
-                                hasValue: _endTOD != null,
-                                onTap: _pickEnd,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      label: 'Title *',
-                      hint: 'e.g. Annual checkup',
-                      controller: _titleCtrl,
-                      textCapitalization: TextCapitalization.sentences,
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 16),
                     AppTextField(
@@ -357,11 +799,15 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                                 width: 22,
                                 height: 22,
                                 child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2.5),
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
                               )
-                            : Text(isEdit
-                                ? 'Update Appointment'
-                                : 'Create Appointment'),
+                            : Text(
+                                isEdit
+                                    ? 'Update Appointment'
+                                    : 'Create Appointment',
+                              ),
                       ),
                     ),
                   ],
@@ -378,61 +824,13 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 Widget _labelText(String text) => Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-        color: DrColors.textSecondary,
-      ),
-    );
-
-class _TapField extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final bool hasValue;
-  final VoidCallback onTap;
-
-  const _TapField({
-    required this.icon,
-    required this.text,
-    required this.hasValue,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: DrColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: DrColors.border),
-        ),
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 16,
-                color: hasValue ? DrColors.primary : DrColors.textTertiary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                text,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color:
-                      hasValue ? DrColors.textPrimary : DrColors.textTertiary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+  text,
+  style: GoogleFonts.inter(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: DrColors.textSecondary,
+  ),
+);
 
 class _PatientInfoCard extends StatelessWidget {
   final PatientModel patient;
@@ -563,8 +961,6 @@ class _PatientSelectorState extends State<_PatientSelector> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _labelText('Patient *'),
-        const SizedBox(height: 6),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -584,19 +980,21 @@ class _PatientSelectorState extends State<_PatientSelector> {
                 },
                 optionsViewBuilder: (ctx, onSel, options) =>
                     _OptionsView<PatientModel>(
-                  options: options.toList(),
-                  query: _query,
-                  noResultText: 'No patient found',
-                  onSelected: onSel,
-                  nameOf: (p) => p.name,
-                  subOf: (p) => p.phone,
-                  idOf: (p) => p.docId,
-                ),
+                      options: options.toList(),
+                      query: _query,
+                      noResultText: 'No patient found',
+                      onSelected: onSel,
+                      nameOf: (p) => p.name,
+                      subOf: (p) => p.phone,
+                      idOf: (p) => p.docId,
+                    ),
                 fieldViewBuilder: (ctx, ctrl, fn, _) => TextFormField(
                   controller: ctrl,
                   focusNode: fn,
                   style: GoogleFonts.inter(
-                      fontSize: 15, color: DrColors.textPrimary),
+                    fontSize: 15,
+                    color: DrColors.textPrimary,
+                  ),
                   onChanged: (v) {
                     if (v.isEmpty) {
                       setState(() {
@@ -607,9 +1005,12 @@ class _PatientSelectorState extends State<_PatientSelector> {
                     }
                   },
                   decoration: InputDecoration(
+                    labelText: 'Patient *',
                     hintText: 'Search patient by name...',
-                    prefixIcon: const Icon(Icons.person_search_outlined,
-                        size: 18),
+                    prefixIcon: const Icon(
+                      Icons.person_search_outlined,
+                      size: 18,
+                    ),
                     suffixIcon: _current != null
                         ? IconButton(
                             icon: const Icon(Icons.close_rounded, size: 16),
@@ -669,15 +1070,15 @@ class _OptionsView<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isNone = options.length == 1 && idOf(options.first) == '__no_result__';
+    final isNone =
+        options.length == 1 && idOf(options.first) == '__no_result__';
     return Align(
       alignment: Alignment.topLeft,
       child: Material(
         elevation: 8,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          constraints:
-              const BoxConstraints(maxHeight: 220, maxWidth: 400),
+          constraints: const BoxConstraints(maxHeight: 220, maxWidth: 400),
           decoration: BoxDecoration(
             color: DrColors.surface,
             borderRadius: BorderRadius.circular(12),
@@ -689,7 +1090,9 @@ class _OptionsView<T> extends StatelessWidget {
                   child: Text(
                     '$noResultText for "$query"',
                     style: GoogleFonts.inter(
-                        fontSize: 13, color: DrColors.textSecondary),
+                      fontSize: 13,
+                      color: DrColors.textSecondary,
+                    ),
                   ),
                 )
               : ListView(
@@ -701,8 +1104,7 @@ class _OptionsView<T> extends StatelessWidget {
                           dense: true,
                           leading: CircleAvatar(
                             radius: 14,
-                            backgroundColor:
-                                DrColors.primaryLight,
+                            backgroundColor: DrColors.primaryLight,
                             child: Text(
                               nameOf(item)[0].toUpperCase(),
                               style: GoogleFonts.inter(
@@ -712,14 +1114,20 @@ class _OptionsView<T> extends StatelessWidget {
                               ),
                             ),
                           ),
-                          title: Text(nameOf(item),
-                              style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500)),
-                          subtitle: Text(subOf(item),
-                              style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: DrColors.textTertiary)),
+                          title: Text(
+                            nameOf(item),
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: Text(
+                            subOf(item),
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: DrColors.textTertiary,
+                            ),
+                          ),
                           onTap: () => onSelected(item),
                         ),
                       )
@@ -837,7 +1245,9 @@ class _QuickCreatePatientDialogState extends State<_QuickCreatePatientDialog> {
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : const Text('Add Patient'),
                     ),
@@ -873,8 +1283,11 @@ class _ConflictDialog extends StatelessWidget {
                 color: DrColors.warningBg,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.warning_amber_rounded,
-                  color: DrColors.warning, size: 28),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                color: DrColors.warning,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -891,7 +1304,9 @@ class _ConflictDialog extends StatelessWidget {
               '${count == 1 ? 'slot' : 'slots'} at this time. Save anyway?',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                  fontSize: 14, color: DrColors.textSecondary),
+                fontSize: 14,
+                color: DrColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 24),
             Row(
@@ -907,7 +1322,8 @@ class _ConflictDialog extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: DrColors.warning),
+                      backgroundColor: DrColors.warning,
+                    ),
                     child: const Text('Save Anyway'),
                   ),
                 ),

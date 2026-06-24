@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import '../../../../controllers/auth_ctrl.dart';
 import '../../../../controllers/home_ctrl.dart';
 import '../../../../models/meeting_per_model.dart';
@@ -137,24 +136,24 @@ class _ContactsViewState extends State<ContactsView> {
                     children: [
                       Row(
                         children: [
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: DrColors.surface,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: DrColors.border),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                size: 16,
-                                color: DrColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
+                          // GestureDetector(
+                          //   onTap: () => Navigator.pop(context),
+                          //   child: Container(
+                          //     width: 36,
+                          //     height: 36,
+                          //     decoration: BoxDecoration(
+                          //       color: DrColors.surface,
+                          //       borderRadius: BorderRadius.circular(10),
+                          //       border: Border.all(color: DrColors.border),
+                          //     ),
+                          //     child: const Icon(
+                          //       Icons.arrow_back_ios_new_rounded,
+                          //       size: 16,
+                          //       color: DrColors.textPrimary,
+                          //     ),
+                          //   ),
+                          // ),
+                          // const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,12 +181,15 @@ class _ContactsViewState extends State<ContactsView> {
                       const SizedBox(height: 12),
 
                       // ── Search ──────────────────────────────────────
-                      Container(
-                        decoration: BoxDecoration(
-                          color: DrColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: DrColors.border),
-                        ),
+                      SizedBox(
+                        // decoration: BoxDecoration(
+                        //   color: DrColors.surface,
+                        //   borderRadius: BorderRadius.circular(12),
+                        //   border: Border.all(
+                        //     color: DrColors.border,
+                        //     width: 0.5,
+                        //   ),
+                        // ),
                         child: TextField(
                           controller: _searchCtrl,
                           style: GoogleFonts.inter(
@@ -215,7 +217,34 @@ class _ContactsViewState extends State<ContactsView> {
                                     ),
                                   )
                                 : null,
-                            border: InputBorder.none,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: DrColors.border,
+                                width: 0.5,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: DrColors.border,
+                                width: 0.5,
+                              ),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: DrColors.border,
+                                width: 0.5,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: DrColors.border,
+                                width: 0.5,
+                              ),
+                            ),
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 12,
@@ -268,7 +297,7 @@ class _ContactsViewState extends State<ContactsView> {
                           padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
                           itemCount: visible.length,
                           separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 12),
                           itemBuilder: (_, i) => _ContactCard(
                             contact: visible[i],
                             onTap: () => Navigator.push(
@@ -362,11 +391,29 @@ class _ContactCard extends StatelessWidget {
   const _ContactCard({required this.contact, required this.onTap});
 
   Future<void> _call() async {
-    if (contact.phone.isEmpty) return;
+    var phone = contact.phone.trim();
+    if (phone.isEmpty) return;
 
-    launchUrlString("tel://91${contact.phone}");
-    // final uri = Uri(scheme: 'tel', path: contact.phone);
-    // if (await canLaunchUrl(uri)) await launchUrl(uri);
+    // Remove spaces, dashes, brackets, etc.
+    phone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+
+    // If already has +, keep it (international number)
+    if (phone.startsWith('+')) {
+      // nothing to do
+    }
+    // If starts with 91 and has no +
+    else if (phone.startsWith('91') && phone.length > 10) {
+      phone = '+$phone';
+    }
+    // Otherwise assume Indian local number
+    else {
+      phone = '+91$phone';
+    }
+
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   @override
@@ -374,161 +421,163 @@ class _ContactCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: DrColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: DrColors.border),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DrColors.border, width: 0.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Column(
-          children: [
-            // Main row
-            InkWell(
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: contact.typeColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                      child: Center(
-                        child: Text(
-                          contact.initials,
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: contact.typeColor,
-                          ),
-                        ),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // Avatar (Modern Circle with soft accent color)
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: contact.typeColor.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      contact.initials,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: contact.typeColor,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  contact.name,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: DrColors.textPrimary,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: contact.typeColor.withValues(
-                                    alpha: 0.10,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  contact.typeLabel,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: contact.typeColor,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (contact.email.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              contact.email,
+                          Expanded(
+                            child: Text(
+                              contact.name,
                               style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: DrColors.textSecondary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: DrColors.textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                          if (contact.phone.isNotEmpty)
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: contact.typeColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              contact.typeLabel.toUpperCase(),
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                color: contact.typeColor,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      if (contact.phone.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.phone_outlined,
+                              size: 13,
+                              color: DrColors.textTertiary,
+                            ),
+                            const SizedBox(width: 4),
                             Text(
                               contact.phone,
                               style: GoogleFonts.inter(
                                 fontSize: 12,
-                                color: DrColors.textTertiary,
+                                color: DrColors.textSecondary,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: DrColors.textTertiary.withValues(alpha: 0.5),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Action row
-            if (contact.phone.isNotEmpty) ...[
-              Divider(height: 1, color: DrColors.border),
-              InkWell(
-                onTap: _call,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 14,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: DrColors.primary.withValues(alpha: 0.10),
-                          shape: BoxShape.circle,
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.call_rounded,
-                          size: 13,
-                          color: DrColors.primary,
+                      ],
+                      if (contact.email.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.mail_outline_rounded,
+                              size: 13,
+                              color: DrColors.textTertiary,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                contact.email,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: DrColors.textTertiary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Call ${contact.phone}',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: DrColors.primary,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
-              ),
-            ],
-          ],
+                const SizedBox(width: 12),
+                // Direct Call or Chevron
+                if (contact.phone.isNotEmpty)
+                  GestureDetector(
+                    onTap: () {
+                      _call();
+                    },
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: DrColors.primary.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.call_rounded,
+                        size: 16,
+                        color: DrColors.primary,
+                      ),
+                    ),
+                  )
+                else
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: DrColors.textTertiary.withValues(alpha: 0.5),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -42,9 +42,9 @@ class HomeView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          DateFormat('EEEE, MMMM d')
-                              .format(DateTime.now())
-                              .toUpperCase(),
+                          DateFormat(
+                            'EEEE, MMMM d',
+                          ).format(DateTime.now()).toUpperCase(),
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -68,9 +68,7 @@ class HomeView extends StatelessWidget {
                 ),
 
                 // ── Up Next carousel (full screen width — no side padding) ──
-                SliverToBoxAdapter(
-                  child: _UpNextCarousel(items: upNext),
-                ),
+                SliverToBoxAdapter(child: _UpNextCarousel(items: upNext)),
 
                 // ── Today stats + Quick actions ────────────────────
                 SliverPadding(
@@ -89,7 +87,9 @@ class HomeView extends StatelessWidget {
                                 color: DrColors.primary,
                                 count: ctrl.todayAppointmentsCount,
                                 label: 'Appointments',
-                                onTap: () => context.go('/home/schedule?filter=appointment'),
+                                onTap: () => context.go(
+                                  '/home/schedule?filter=appointment',
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -99,7 +99,8 @@ class HomeView extends StatelessWidget {
                                 color: DrColors.accent,
                                 count: ctrl.todayMeetingsCount,
                                 label: 'Meetings',
-                                onTap: () => context.go('/home/schedule?filter=meeting'),
+                                onTap: () =>
+                                    context.go('/home/schedule?filter=meeting'),
                               ),
                             ),
                           ],
@@ -262,19 +263,16 @@ class _FullCard extends StatelessWidget {
           ? const EdgeInsets.symmetric(horizontal: 6)
           : const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [DrColors.gradStart, DrColors.gradEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: DrColors.primary,
+
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: DrColors.primary.withValues(alpha: 0.30),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        // boxShadow: [
+        //   BoxShadow(
+        //     color: DrColors.primary.withValues(alpha: 0.30),
+        //     blurRadius: 24,
+        //     offset: const Offset(0, 8),
+        //   ),
+        // ],
       ),
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       child: Column(
@@ -435,19 +433,15 @@ class _EmptyCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [DrColors.gradStart, DrColors.gradEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: DrColors.primary,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: DrColors.primary.withValues(alpha: 0.30),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        // boxShadow: [
+        //   BoxShadow(
+        //     color: DrColors.primary.withValues(alpha: 0.30),
+        //     blurRadius: 24,
+        //     offset: const Offset(0, 8),
+        //   ),
+        // ],
       ),
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       child: Column(
@@ -552,12 +546,12 @@ class _StatCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: DrColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DrColors.border),
+          border: Border.all(color: DrColors.border, width: 0.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: 6,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
@@ -617,12 +611,12 @@ class _QuickActions extends StatelessWidget {
           decoration: BoxDecoration(
             color: DrColors.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: DrColors.border),
+            border: Border.all(color: DrColors.border, width: 0.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+                blurRadius: 6,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
@@ -643,6 +637,7 @@ class _QuickActions extends StatelessWidget {
               ),
               Divider(
                 height: 1,
+                thickness: .5,
                 indent: 16,
                 endIndent: 16,
                 color: DrColors.border,

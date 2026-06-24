@@ -25,14 +25,14 @@ class ScheduleView extends StatefulWidget {
 class _ScheduleViewState extends State<ScheduleView> {
   DateTime _selectedDate = DateTime.now();
   DateTimeRange? _dateRange;
-  String _statusFilter = 'All';
+  String _statusFilter = 'Scheduled';
   bool _isRangeMode = false;
   late _TypeFilter _typeFilter;
 
   List<AppointmentMeetingModel> _fetched = [];
   bool _loading = false;
 
-  static const _statuses = ['All', 'Scheduled', 'Completed', 'Cancelled'];
+  static const _statuses = ['Scheduled', 'Completed', 'Cancelled', 'All'];
 
   List<DateTime> _weekDates() {
     final today = DateTime.now();
@@ -223,17 +223,9 @@ class _ScheduleViewState extends State<ScheduleView> {
                             vertical: 7,
                           ),
                           decoration: BoxDecoration(
-                            gradient: _isRangeMode
-                                ? const LinearGradient(
-                                    colors: [
-                                      DrColors.gradStart,
-                                      DrColors.gradEnd,
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            color: _isRangeMode ? null : DrColors.surface,
+                            color: _isRangeMode
+                                ? DrColors.primary
+                                : DrColors.surface,
                             borderRadius: BorderRadius.circular(20),
                             border: _isRangeMode
                                 ? null
@@ -299,17 +291,9 @@ class _ScheduleViewState extends State<ScheduleView> {
                               duration: const Duration(milliseconds: 200),
                               width: 46,
                               decoration: BoxDecoration(
-                                gradient: isSelected
-                                    ? const LinearGradient(
-                                        colors: [
-                                          DrColors.gradStart,
-                                          DrColors.gradEnd,
-                                        ],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                      )
-                                    : null,
-                                color: isSelected ? null : DrColors.surface,
+                                color: isSelected
+                                    ? DrColors.primary
+                                    : DrColors.surface,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: isSelected
@@ -376,6 +360,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                     thumbColor: _typeFilter == _TypeFilter.meetings
                         ? DrColors.accent.withValues(alpha: 0.7)
                         : DrColors.primary.withValues(alpha: 0.7),
+
                     children: {
                       _TypeFilter.all: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -617,8 +602,8 @@ class _ScheduleCard extends StatelessWidget {
     return (desc != null && desc.isNotEmpty) ? desc : '';
   }
 
-  bool get _subtitleIsLocation =>
-      !_isAppt && (item.description?.isNotEmpty ?? false);
+  // bool get _subtitleIsLocation =>
+  //     !_isAppt && (item.description?.isNotEmpty ?? false);
 
   String _statusLabel() {
     if (item.status == 'Cancelled') return 'Cancelled';
@@ -670,18 +655,299 @@ class _ScheduleCard extends StatelessWidget {
     );
   }
 
+  void _showDetailsDialog(BuildContext context) {
+    final statusColor = _statusColor();
+    final themeColor = _typeColor;
+
+    final hasSummary = item.status == 'Completed' && (item.summary ?? '').isNotEmpty;
+    final hasCancellation = item.status == 'Cancelled' && (item.cancellationReason ?? '').isNotEmpty;
+    final showExtraBlock = hasSummary || hasCancellation;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: DrColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isAppt ? 'Appointment Detail' : 'Meeting Detail',
+                          style: GoogleFonts.inter(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: DrColors.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            _StatusBadge(
+                              label: _statusLabel(),
+                              color: statusColor,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    style: IconButton.styleFrom(
+                      backgroundColor: DrColors.background,
+                      foregroundColor: DrColors.textSecondary,
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildTimelineItem(
+                        icon: Icons.access_time_filled_rounded,
+                        label: 'Date & Time',
+                        themeColor: themeColor,
+                        isLast: false,
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat('EEEE, MMMM d, yyyy').format(item.startTime),
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: DrColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${DateFormat('hh:mm a').format(item.startTime)} - ${DateFormat('hh:mm a').format(item.endTime)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: DrColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _buildTimelineItem(
+                        icon: _isAppt ? Icons.person_rounded : Icons.groups_rounded,
+                        label: _isAppt ? 'Patient' : 'Meeting Person',
+                        themeColor: themeColor,
+                        isLast: false,
+                        content: Text(
+                          item.personName,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: DrColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      _buildTimelineItem(
+                        icon: Icons.bookmark_rounded,
+                        label: 'Details',
+                        themeColor: themeColor,
+                        isLast: !showExtraBlock,
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: themeColor.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(100),
+                              ),
+                              child: Text(
+                                item.type.replaceAll('_', ' ').toUpperCase(),
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: themeColor,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                            if ((item.shortDescription ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Text(
+                                item.shortDescription!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: DrColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                            if ((item.description ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                item.description!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: DrColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (hasSummary)
+                        _buildTimelineItem(
+                          icon: Icons.check_circle_rounded,
+                          label: 'Completion Summary',
+                          themeColor: DrColors.success,
+                          isLast: true,
+                          content: Text(
+                            item.summary!,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: DrColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      if (hasCancellation)
+                        _buildTimelineItem(
+                          icon: Icons.cancel_rounded,
+                          label: 'Cancellation Reason',
+                          themeColor: DrColors.error,
+                          isLast: true,
+                          content: Text(
+                            item.cancellationReason!,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: DrColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: DrColors.border, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: DrColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem({
+    required IconData icon,
+    required String label,
+    required Widget content,
+    required Color themeColor,
+    required bool isLast,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: themeColor.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: themeColor,
+              ),
+            ),
+            if (!isLast)
+              Container(
+                width: 2,
+                height: 38,
+                color: DrColors.border.withValues(alpha: 0.6),
+              ),
+          ],
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: DrColors.textTertiary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              content,
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+
+
+
+
   @override
   Widget build(BuildContext context) {
+    final showActions =
+        item.status != 'Completed' && item.status != 'Cancelled';
     return Container(
       decoration: BoxDecoration(
         color: DrColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DrColors.border),
+        border: Border.all(color: DrColors.border, width: 0.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -690,138 +956,138 @@ class _ScheduleCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Main content row with accent stripe
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Left accent stripe
-                  Container(width: 4, color: _accentColor),
-                  // Content
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Type badge
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _typeColor.withOpacity(0.10),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    _isAppt ? 'Appointment' : 'Meeting',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: _typeColor,
-                                      letterSpacing: 0.3,
+            // Main content row wrapped in InkWell
+            InkWell(
+              onTap: () => _showDetailsDialog(context),
+              borderRadius: showActions
+                  ? const BorderRadius.vertical(top: Radius.circular(16))
+                  : BorderRadius.circular(16),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Left accent stripe
+                    Container(width: 4, color: _accentColor),
+                    // Content
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Type badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _typeColor.withOpacity(0.10),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      _isAppt ? 'Appointment' : 'Meeting',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: _typeColor,
+                                        letterSpacing: 0.3,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 6),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _mainTitle,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: DrColors.textPrimary,
+                                    ),
+                                  ),
+                                  if (_subtitle.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            _subtitle,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              color: DrColors.textSecondary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Time + status
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
                                 Text(
-                                  _mainTitle,
+                                  DateFormat('HH:mm').format(item.startTime),
                                   style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
                                     color: DrColors.textPrimary,
                                   ),
                                 ),
-                                if (_subtitle.isNotEmpty) ...[
-                                  const SizedBox(height: 3),
-                                  Row(
-                                    children: [
-                                      if (_subtitleIsLocation) ...[
-                                        const Icon(
-                                          Icons.location_on_rounded,
-                                          size: 11,
-                                          color: DrColors.textTertiary,
-                                        ),
-                                        const SizedBox(width: 2),
-                                      ],
-                                      Expanded(
-                                        child: Text(
-                                          _subtitle,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            color: DrColors.textSecondary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                const SizedBox(height: 4),
+                                _StatusBadge(
+                                  label: _statusLabel(),
+                                  color: _statusColor(),
+                                ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Time + status
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                DateFormat('HH:mm').format(item.startTime),
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: DrColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              _StatusBadge(
-                                label: _statusLabel(),
-                                color: _statusColor(),
-                              ),
-                            ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
             // Action row
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _ActionButton(
-                      icon: Icons.edit_outlined,
-                      label: 'Edit',
-                      color: _typeColor,
-                      onTap: () => _openEdit(context),
+            if (showActions) ...[
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.edit_outlined,
+                        label: 'Edit',
+                        color: _typeColor,
+                        onTap: () => _openEdit(context),
+                      ),
                     ),
-                  ),
-                  Container(width: 1, height: 20, color: DrColors.border),
-                  Expanded(
-                    child: _ActionButton(
-                      icon: Icons.swap_horiz_rounded,
-                      label: 'Update Status',
-                      color: item.status == 'Scheduled'
-                          ? DrColors.warning
-                          : DrColors.textTertiary,
-                      onTap: () => _showStatusMenu(context),
+                    Container(width: 1, height: 20, color: DrColors.border),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.swap_horiz_rounded,
+                        label: 'Update Status',
+                        color: item.status == 'Scheduled'
+                            ? DrColors.warning
+                            : DrColors.textTertiary,
+                        onTap: () => _showStatusMenu(context),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

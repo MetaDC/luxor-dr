@@ -29,8 +29,9 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _checkInitial();
-    _connectivityStream =
-        Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
+    _connectivityStream = Connectivity().onConnectivityChanged.listen(
+      _onConnectivityChanged,
+    );
   }
 
   @override
@@ -46,10 +47,12 @@ class _HomeShellState extends State<HomeShell> {
 
   void _onConnectivityChanged(List<ConnectivityResult> result) {
     if (!mounted) return;
-    final has = result.any((r) =>
-        r == ConnectivityResult.mobile ||
-        r == ConnectivityResult.wifi ||
-        r == ConnectivityResult.ethernet);
+    final has = result.any(
+      (r) =>
+          r == ConnectivityResult.mobile ||
+          r == ConnectivityResult.wifi ||
+          r == ConnectivityResult.ethernet,
+    );
     setState(() => _connectionExist = has);
     if (!has && !_dialogShowing) {
       _showNoConnectionDialog();
@@ -122,7 +125,8 @@ class _HomeShellState extends State<HomeShell> {
   int _locationIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
     if (loc.startsWith('/home/schedule')) return 1;
-    if (loc.startsWith('/home/profile')) return 2;
+    if (loc.startsWith('/home/contacts')) return 2;
+    if (loc.startsWith('/home/profile')) return 3;
     return 0;
   }
 
@@ -133,6 +137,8 @@ class _HomeShellState extends State<HomeShell> {
       case 1:
         context.go('/home/schedule');
       case 2:
+        context.go('/home/contacts');
+      case 3:
         context.go('/home/profile');
     }
   }
@@ -189,7 +195,7 @@ class _FloatingNavBar extends StatelessWidget {
             height: 66,
             decoration: BoxDecoration(
               color: DrColors.surface,
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
                   color: DrColors.primary.withValues(alpha: 0.10),
@@ -222,16 +228,23 @@ class _FloatingNavBar extends StatelessWidget {
                   active: activeIndex == 1,
                   onTap: () => onItemTap(1),
                 ),
+                // Centre action — not a nav destination
+                _CreateTab(onTap: onCreateTap),
+                _NavTab(
+                  icon: Icons.people_alt_outlined,
+                  activeIcon: Icons.people_alt_rounded,
+                  label: 'Contacts',
+                  active: activeIndex == 2,
+                  onTap: () => onItemTap(2),
+                ),
                 _NavTab(
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
                   label: 'Profile',
-                  active: activeIndex == 2,
-                  onTap: () => onItemTap(2),
+                  active: activeIndex == 3,
+                  onTap: () => onItemTap(3),
                   isLast: true,
                 ),
-                // Centre action — not a nav destination
-                _CreateTab(onTap: onCreateTap),
               ],
             ),
           ),
@@ -334,11 +347,7 @@ class _CreateTab extends StatelessWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [DrColors.gradStart, DrColors.gradEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: DrColors.primary,
               borderRadius: BorderRadius.circular(17),
               boxShadow: [
                 BoxShadow(
@@ -397,11 +406,7 @@ class _NewItemSheet extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [DrColors.gradStart, DrColors.gradEnd],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: DrColors.primary,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(

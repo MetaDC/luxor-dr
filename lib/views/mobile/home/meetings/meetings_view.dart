@@ -439,9 +439,229 @@ class _MeetingCard extends StatelessWidget {
     );
   }
 
+  void _showDetailsDialog(BuildContext context) {
+    final statusColor = _statusColor();
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: DrColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Meeting Detail',
+                            style: GoogleFonts.inter(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: DrColors.textPrimary,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              _StatusBadge(label: _statusLabel(), color: statusColor),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => Navigator.pop(ctx),
+                      borderRadius: BorderRadius.circular(100),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: DrColors.background,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 20,
+                          color: DrColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _buildDetailRow(Icons.groups_outlined, 'Meeting Person', meeting.personName),
+                const SizedBox(height: 16),
+                _buildDetailRow(
+                  Icons.calendar_today_rounded,
+                  'Date & Time',
+                  '${DateFormat('EEEE, MMM d, yyyy').format(meeting.startTime)}\n${DateFormat('hh:mm a').format(meeting.startTime)} - ${DateFormat('hh:mm a').format(meeting.endTime)}',
+                ),
+                const SizedBox(height: 16),
+                _buildDetailRow(
+                  Icons.category_outlined,
+                  'Type',
+                  meeting.type.replaceAll('_', ' ').toUpperCase(),
+                ),
+                if ((meeting.shortDescription ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildDetailRow(Icons.title_rounded, 'Title', meeting.shortDescription!),
+                ],
+                if ((meeting.description ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildDetailRow(Icons.location_on_outlined, 'Location / Venue', meeting.description!),
+                ],
+                if (meeting.status == 'Completed' && (meeting.summary ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _buildSectionBlock(
+                    title: 'Completion Summary',
+                    content: meeting.summary!,
+                    icon: Icons.check_circle_outline_rounded,
+                    color: DrColors.success,
+                  ),
+                ],
+                if (meeting.status == 'Cancelled' && (meeting.cancellationReason ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _buildSectionBlock(
+                    title: 'Cancellation Reason',
+                    content: meeting.cancellationReason!,
+                    icon: Icons.cancel_outlined,
+                    color: DrColors.error,
+                  ),
+                ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: TextButton.styleFrom(
+                      backgroundColor: DrColors.background,
+                      foregroundColor: DrColors.textPrimary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      'Close',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: DrColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(
+            color: DrColors.accentLight,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: DrColors.accent,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: DrColors.textTertiary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: DrColors.textPrimary,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionBlock({
+    required String title,
+    required String content,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.12), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            content,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: DrColors.textPrimary,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final location = meeting.description ?? '';
+    final showActions = meeting.status != 'Completed' && meeting.status != 'Cancelled';
     return Container(
       decoration: BoxDecoration(
         color: DrColors.surface,
@@ -451,104 +671,112 @@ class _MeetingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Main row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 3.5,
-                  height: location.isNotEmpty ? 52 : 44,
-                  decoration: BoxDecoration(
-                    color: _accentColor,
-                    borderRadius: BorderRadius.circular(4),
+          // Main row wrapped in InkWell
+          InkWell(
+            onTap: () => _showDetailsDialog(context),
+            borderRadius: showActions
+                ? const BorderRadius.vertical(top: Radius.circular(14))
+                : BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3.5,
+                    height: location.isNotEmpty ? 52 : 44,
+                    decoration: BoxDecoration(
+                      color: _accentColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          meeting.shortDescription ?? meeting.personName,
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: DrColors.textPrimary,
+                          ),
+                        ),
+                        if (location.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_rounded,
+                                  size: 12, color: _accentColor),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  location,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: DrColors.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        meeting.shortDescription ?? meeting.personName,
+                        DateFormat('HH:mm').format(meeting.startTime),
                         style: GoogleFonts.inter(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: DrColors.textPrimary,
                         ),
                       ),
-                      if (location.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on_rounded,
-                                size: 12, color: _accentColor),
-                            const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                location,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: DrColors.textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      const SizedBox(height: 2),
+                      _StatusBadge(
+                          label: _statusLabel(), color: _statusColor()),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      DateFormat('HH:mm').format(meeting.startTime),
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: DrColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    _StatusBadge(
-                        label: _statusLabel(), color: _statusColor()),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
           // Divider + action buttons
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.edit_rounded,
-                    label: 'Edit',
-                    color: DrColors.accent,
-                    onTap: () => _openEdit(context),
+          if (showActions) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.edit_rounded,
+                      label: 'Edit',
+                      color: DrColors.accent,
+                      onTap: () => _openEdit(context),
+                    ),
                   ),
-                ),
-                Container(width: 1, height: 22, color: DrColors.border),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.update_rounded,
-                    label: 'Update Status',
-                    color: meeting.status == 'Scheduled'
-                        ? DrColors.warning
-                        : DrColors.textTertiary,
-                    onTap: () => _showStatusMenu(context),
+                  Container(width: 1, height: 22, color: DrColors.border),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.update_rounded,
+                      label: 'Update Status',
+                      color: meeting.status == 'Scheduled'
+                          ? DrColors.warning
+                          : DrColors.textTertiary,
+                      onTap: () => _showStatusMenu(context),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

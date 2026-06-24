@@ -45,42 +45,29 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: DrColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: controller,
-          validator: validator,
-          keyboardType: keyboardType,
-          obscureText: obscureText,
-          maxLines: maxLines,
-          maxLength: maxLength,
-          readOnly: readOnly,
-          onTap: onTap,
-          onChanged: onChanged,
-          inputFormatters: inputFormatters,
-          focusNode: focusNode,
-          autofocus: autofocus,
-          textCapitalization: textCapitalization,
-          style:
-              GoogleFonts.inter(fontSize: 15, color: DrColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: hint,
-            suffixIcon: suffix,
-            prefixIcon: prefix,
-            counterText: '',
-          ),
-        ),
-      ],
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      maxLines: maxLines,
+      maxLength: maxLength,
+      readOnly: readOnly,
+      onTap: onTap,
+      onChanged: onChanged,
+      inputFormatters: inputFormatters,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      textCapitalization: textCapitalization,
+      style:
+          GoogleFonts.inter(fontSize: 15, color: DrColors.textPrimary),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        suffixIcon: suffix,
+        prefixIcon: prefix,
+        counterText: '',
+      ),
     );
   }
 }

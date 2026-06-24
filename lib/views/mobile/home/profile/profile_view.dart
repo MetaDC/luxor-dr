@@ -1,11 +1,12 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../../../../controllers/auth_ctrl.dart';
 import '../../../../models/doctor_model.dart';
 import '../../../../utils/app_theme.dart';
-import '../contacts/contacts_view.dart';
 
 class ProfileView extends StatelessWidget {
   const ProfileView({super.key});
@@ -48,11 +49,8 @@ class ProfileView extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [DrColors.gradStart, DrColors.gradEnd],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: DrColors.primary,
+
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -132,36 +130,53 @@ class ProfileView extends StatelessWidget {
 
                   // ── Menu items ───────────────────────────────────
                   _MenuItem(
-                    icon: Icons.people_alt_outlined,
-                    label: 'Contacts',
-                    subtitle: 'Patients & meeting contacts with history',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ContactsView(),
-                      ),
+                    icon: Icons.privacy_tip_outlined,
+                    label: 'Privacy Policy',
+                    subtitle: 'Read our privacy policy',
+                    onTap: () => launchUrlString(
+                      'https://www.luxorhospital.com/privacy-policy.html',
+                      mode: LaunchMode.externalApplication,
                     ),
                   ),
                   _MenuItem(
-                    icon: Icons.notifications_outlined,
-                    label: 'Notifications',
-                    subtitle: 'Manage alerts',
-                    onTap: () {},
+                    icon: Icons.description_outlined,
+                    label: 'Terms & Conditions',
+                    subtitle: 'Read our terms of service',
+                    onTap: () => launchUrlString(
+                      'https://www.luxorhospital.com/privacy-policy.html',
+                      mode: LaunchMode.externalApplication,
+                    ),
                   ),
-                  _MenuItem(
-                    icon: Icons.settings_outlined,
-                    label: 'Settings',
-                    subtitle: 'App preferences',
-                    onTap: () {},
-                  ),
-                  _MenuItem(
-                    icon: Icons.help_outline_rounded,
-                    label: 'Help & Support',
-                    subtitle: 'FAQs & contact',
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 4),
+                  // const SizedBox(height: 4),
                   _LogoutMenuItem(auth: auth),
+                  const SizedBox(height: 32),
+                  Center(
+                    child: RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: DrColors.textSecondary,
+                        ),
+                        children: [
+                          const TextSpan(text: 'Developed by '),
+                          TextSpan(
+                            text: 'Diwizon',
+                            style: const TextStyle(
+                              decoration: TextDecoration.underline,
+                              fontWeight: FontWeight.w600,
+                              color: DrColors.primary,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () => launchUrlString(
+                                'https://diwizon.com',
+                                mode: LaunchMode.externalApplication,
+                              ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                 ],
               ),
             );
@@ -190,33 +205,108 @@ class _LogoutMenuItemState extends State<_LogoutMenuItem> {
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Text(
-          'Log Out',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Are you sure you want to log out?',
-          style: GoogleFonts.inter(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.of(context, rootNavigator: true).pop(false),
-            child: const Text('Cancel'),
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: DrColors.surface,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: DrColors.error.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: DrColors.error,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Log Out',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: DrColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Are you sure you want to log out of your account?',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: DrColors.textSecondary,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).pop(false),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 46,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: DrColors.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: DrColors.border,
+                            width: 0.5,
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: DrColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).pop(true),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 46,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: DrColors.error,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Log Out',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () =>
-                Navigator.of(context, rootNavigator: true).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DrColors.error,
-            ),
-            child: const Text('Log Out'),
-          ),
-        ],
+        ),
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -236,7 +326,7 @@ class _LogoutMenuItemState extends State<_LogoutMenuItem> {
       decoration: BoxDecoration(
         color: DrColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: DrColors.border),
+        border: Border.all(color: DrColors.border, width: 0.5),
       ),
       child: InkWell(
         onTap: _loggingOut ? null : _logout,
@@ -249,7 +339,7 @@ class _LogoutMenuItemState extends State<_LogoutMenuItem> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: DrColors.error.withValues(alpha: 0.1),
+                  color: DrColors.error.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: _loggingOut
@@ -268,21 +358,28 @@ class _LogoutMenuItemState extends State<_LogoutMenuItem> {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  _loggingOut ? 'Logging out…' : 'Log Out',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: DrColors.error,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+
+                  children: [
+                    Text(
+                      _loggingOut ? 'Logging out…' : 'Log Out',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: DrColors.error,
+                      ),
+                    ),
+                    Text(
+                      'Logout of your account',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: DrColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (!_loggingOut)
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: DrColors.textTertiary.withValues(alpha: 0.6),
-                  size: 20,
-                ),
             ],
           ),
         ),
@@ -418,14 +515,7 @@ class _DoctorTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                gradient: isActive
-                    ? const LinearGradient(
-                        colors: [DrColors.gradStart, DrColors.gradEnd],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: isActive ? null : DrColors.border,
+                color: isActive ? DrColors.primary : DrColors.border,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -449,9 +539,7 @@ class _DoctorTile extends StatelessWidget {
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: isActive
-                          ? DrColors.primary
-                          : DrColors.textPrimary,
+                      color: isActive ? DrColors.primary : DrColors.textPrimary,
                     ),
                   ),
                   if (doctor.specialization.isNotEmpty)
@@ -522,7 +610,7 @@ class _MenuItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: DrColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: DrColors.border),
+        border: Border.all(color: DrColors.border, width: 0.5),
       ),
       child: InkWell(
         onTap: onTap,

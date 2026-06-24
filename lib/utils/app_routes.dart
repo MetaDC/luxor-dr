@@ -6,6 +6,7 @@ import '../views/mobile/home/home_shell.dart';
 import '../views/mobile/home/home_view.dart';
 import '../views/mobile/home/schedule/schedule_view.dart';
 import '../views/mobile/home/profile/profile_view.dart';
+import '../views/mobile/home/contacts/contacts_view.dart';
 import '../views/mobile/splash_view.dart';
 
 class GoRouterNotifier extends ChangeNotifier {
@@ -57,6 +58,13 @@ GoRouter buildRouter(GoRouterNotifier notifier) {
                 child: ScheduleView(initialFilter: filter),
               );
             },
+          ),
+          GoRoute(
+            path: '/home/contacts',
+            pageBuilder: (context, state) => NoTransitionPage(
+              key: state.pageKey,
+              child: const ContactsView(),
+            ),
           ),
           GoRoute(
             path: '/home/profile',
