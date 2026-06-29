@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../../controllers/auth_ctrl.dart';
 import '../../../utils/app_theme.dart';
 import '../../../widgets/app_text_field.dart';
+import '../../../utils/phone_helper.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -208,14 +209,14 @@ class _EmailStep extends StatelessWidget {
             controller: emailCtrl,
             keyboardType: TextInputType.emailAddress,
             autofocus: true,
-            prefix: const Icon(
-              Icons.email_outlined,
-              color: DrColors.textSecondary,
-              size: 20,
-            ),
+            // prefix: const Icon(
+            //   Icons.email_outlined,
+            //   color: DrColors.textSecondary,
+            //   size: 20,
+            // ),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Email is required.';
-              if (!v.contains('@')) return 'Enter a valid email.';
+              if (!isValidEmail(v.trim())) return 'Enter a valid email.';
               return null;
             },
           ),

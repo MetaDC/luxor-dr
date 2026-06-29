@@ -15,7 +15,20 @@ class HomeCtrl extends GetxController {
   bool dataLoaded = false;
 
   List<PatientModel> patients = [];
-  List<MeetingPersonModel> meetingPersons = [];
+  List<MeetingPersonModel> get meetingPersons => patients
+      .map(
+        (p) => MeetingPersonModel(
+          docId: p.docId,
+          name: p.name,
+          lowerName: p.lowerName,
+          email: p.email,
+          phone: p.phone,
+          createdByRole: p.createdByRole,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        ),
+      )
+      .toList();
   List<AppointmentMeetingModel> appointments = [];
   List<AppointmentMeetingModel> meetings = [];
 
@@ -25,8 +38,6 @@ class HomeCtrl extends GetxController {
 
   StreamSubscription<User?>? _authSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _patientsStream;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
-  _meetingPersonsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _appointmentsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _meetingsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _todayApptsStream;
@@ -73,7 +84,6 @@ class HomeCtrl extends GetxController {
   void _launchStreams(String doctorId) {
     print("object------");
     getPatients();
-    getMeetingPersons();
     // getAppointments(doctorId);
     // getMeetings(doctorId);
     getTodayAppointments(doctorId);
@@ -93,7 +103,6 @@ class HomeCtrl extends GetxController {
 
   void _cancelAll() {
     _patientsStream?.cancel();
-    _meetingPersonsStream?.cancel();
     _appointmentsStream?.cancel();
     _meetingsStream?.cancel();
     _todayApptsStream?.cancel();
@@ -105,7 +114,6 @@ class HomeCtrl extends GetxController {
 
   void _clearAll() {
     patients.clear();
-    meetingPersons.clear();
     appointments.clear();
     meetings.clear();
     todayAppointments.clear();
@@ -134,7 +142,7 @@ class HomeCtrl extends GetxController {
     required String phone,
   }) async {
     try {
-      final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+      // final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
       final ref = FBFireStore.patients.doc();
       final now = Timestamp.fromDate(DateTime.now());
       final data = {
@@ -143,7 +151,7 @@ class HomeCtrl extends GetxController {
         'lowerName': name.trim().toLowerCase(),
         'email': email.trim(),
         'phone': phone.trim(),
-        'doctorId': doctorId,
+        // 'doctorId': doctorId,
         'createdByRole': 'doctor',
         'createdAt': now,
         'updatedAt': now,
@@ -158,24 +166,13 @@ class HomeCtrl extends GetxController {
 
   // ─── Meeting Persons ───────────────────────────────────────────────────────
 
-  void getMeetingPersons() {
-    _meetingPersonsStream?.cancel();
-    _meetingPersonsStream = FBFireStore.meetingPersons
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen((event) {
-          meetingPersons = event.docs.map(MeetingPersonModel.fromSnap).toList();
-          update();
-        }, onError: (e) => debugPrint(e.toString()));
-  }
-
   Future<MeetingPersonModel?> createMeetingPerson({
     required String name,
     required String email,
     required String phone,
   }) async {
     try {
-      final doctorId = AuthCtrl.to.currentDoctor?.docId;
+      // final doctorId = AuthCtrl.to.currentDoctor?.docId;
       final ref = FBFireStore.meetingPersons.doc();
       final now = Timestamp.fromDate(DateTime.now());
       final data = {
@@ -184,7 +181,7 @@ class HomeCtrl extends GetxController {
         'lowerName': name.trim().toLowerCase(),
         'email': email.trim(),
         'phone': phone.trim(),
-        'doctorId': doctorId,
+        // 'doctorId': doctorId,
         'createdByRole': 'doctor',
         'createdAt': now,
         'updatedAt': now,
@@ -340,7 +337,6 @@ class HomeCtrl extends GetxController {
 
   void restartForDoctor(String doctorId) {
     _patientsStream?.cancel();
-    _meetingPersonsStream?.cancel();
     _appointmentsStream?.cancel();
     _meetingsStream?.cancel();
     _todayApptsStream?.cancel();
@@ -348,7 +344,6 @@ class HomeCtrl extends GetxController {
     _clockTimer?.cancel();
     _clockTimer = null;
     patients.clear();
-    meetingPersons.clear();
     appointments.clear();
     meetings.clear();
     todayAppointments.clear();
@@ -418,6 +413,96 @@ class HomeCtrl extends GetxController {
       debugPrint(e.toString());
       return false;
     }
+  }
+
+  // ─── Real-time listen by date/range ──────────────────────────────────────
+
+  Stream<List<AppointmentMeetingModel>> listenAppointmentsForDate(
+    DateTime date,
+  ) {
+    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    return FBFireStore.apptAndMeeting
+        .where('doctorId', isEqualTo: doctorId)
+        .where('docType', isEqualTo: 'appointment')
+        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('startTime', isLessThan: Timestamp.fromDate(end))
+        .orderBy('startTime')
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
+              .toList(),
+        );
+  }
+
+  Stream<List<AppointmentMeetingModel>> listenMeetingsForDate(DateTime date) {
+    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    return FBFireStore.apptAndMeeting
+        .where('doctorId', isEqualTo: doctorId)
+        .where('docType', isEqualTo: 'meeting')
+        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('startTime', isLessThan: Timestamp.fromDate(end))
+        .orderBy('startTime')
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
+              .toList(),
+        );
+  }
+
+  Stream<List<AppointmentMeetingModel>> listenAppointmentsForRange(
+    DateTime from,
+    DateTime to,
+  ) {
+    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+    final start = DateTime(from.year, from.month, from.day);
+    final end = DateTime(
+      to.year,
+      to.month,
+      to.day,
+    ).add(const Duration(days: 1));
+    return FBFireStore.apptAndMeeting
+        .where('doctorId', isEqualTo: doctorId)
+        .where('docType', isEqualTo: 'appointment')
+        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('startTime', isLessThan: Timestamp.fromDate(end))
+        .orderBy('startTime')
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
+              .toList(),
+        );
+  }
+
+  Stream<List<AppointmentMeetingModel>> listenMeetingsForRange(
+    DateTime from,
+    DateTime to,
+  ) {
+    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+    final start = DateTime(from.year, from.month, from.day);
+    final end = DateTime(
+      to.year,
+      to.month,
+      to.day,
+    ).add(const Duration(days: 1));
+    return FBFireStore.apptAndMeeting
+        .where('doctorId', isEqualTo: doctorId)
+        .where('docType', isEqualTo: 'meeting')
+        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('startTime', isLessThan: Timestamp.fromDate(end))
+        .orderBy('startTime')
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
+              .toList(),
+        );
   }
 
   // ─── On-demand fetch by date (using .get()) ──────────────────────────────
@@ -535,12 +620,9 @@ class HomeCtrl extends GetxController {
     final end = start.add(const Duration(days: 1));
     try {
       final snap = await FBFireStore.apptAndMeeting
-          .where('doctorId', isEqualTo: doctorId)
+          // .where('doctorId', isEqualTo: doctorId)
           .where('personId', isEqualTo: personId)
-          .where(
-            'startTime',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(start),
-          )
+          .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
           .where('startTime', isLessThan: Timestamp.fromDate(end))
           .orderBy('startTime')
           .get();

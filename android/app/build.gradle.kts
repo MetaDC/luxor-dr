@@ -34,9 +34,7 @@ android {
 
     signingConfigs {
         create("release") {
-            println("KEYSTORE PROPERTY = ${keystoreProperties["storeFile"]}")
             val store = File(project.projectDir, keystoreProperties["storeFile"] as String)
-            println("RESOLVED PATH = ${store.absolutePath}")
             keyAlias = keystoreProperties["keyAlias"] as String
             keyPassword = keystoreProperties["keyPassword"] as String
             storeFile = store

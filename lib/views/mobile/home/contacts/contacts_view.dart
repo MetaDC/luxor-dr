@@ -1,12 +1,15 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:luxor_dr/widgets/phone_input_field.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../controllers/auth_ctrl.dart';
 import '../../../../controllers/home_ctrl.dart';
-import '../../../../models/meeting_per_model.dart';
 import '../../../../models/patient_model.dart';
 import '../../../../utils/app_theme.dart';
+import '../../../../utils/phone_helper.dart';
+import '../../../../widgets/app_snackbar.dart';
+import '../../../../widgets/app_text_field.dart';
 import 'contact_detail_view.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,14 +21,12 @@ class ContactEntry {
   final String name;
   final String email;
   final String phone;
-  final bool isPatient;
 
   const ContactEntry({
     required this.id,
     required this.name,
     required this.email,
     required this.phone,
-    required this.isPatient,
   });
 
   String get initials {
@@ -34,15 +35,13 @@ class ContactEntry {
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
-  Color get typeColor => isPatient ? DrColors.primary : DrColors.accent;
-  String get typeLabel => isPatient ? 'Patient' : 'Contact';
+  Color get typeColor => DrColors.primary;
+  String get typeLabel => 'Contact';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ContactsView
 // ─────────────────────────────────────────────────────────────────────────────
-
-enum _ContactTab { all, patients, contacts }
 
 class ContactsView extends StatefulWidget {
   const ContactsView({super.key});
@@ -52,7 +51,6 @@ class ContactsView extends StatefulWidget {
 }
 
 class _ContactsViewState extends State<ContactsView> {
-  _ContactTab _tab = _ContactTab.all;
   final _searchCtrl = TextEditingController();
   String _query = '';
 
@@ -70,29 +68,16 @@ class _ContactsViewState extends State<ContactsView> {
     super.dispose();
   }
 
-  List<ContactEntry> _build(
-    List<PatientModel> patients,
-    List<MeetingPersonModel> meetingPersons,
-  ) => [
-    ...patients.map(
-      (p) => ContactEntry(
-        id: p.docId,
-        name: p.name,
-        email: p.email,
-        phone: p.phone,
-        isPatient: true,
-      ),
-    ),
-    ...meetingPersons.map(
-      (m) => ContactEntry(
-        id: m.docId,
-        name: m.name,
-        email: m.email,
-        phone: m.phone,
-        isPatient: false,
-      ),
-    ),
-  ];
+  List<ContactEntry> _build(List<PatientModel> patients) => patients
+      .map(
+        (p) => ContactEntry(
+          id: p.docId,
+          name: p.name,
+          email: p.email,
+          phone: p.phone,
+        ),
+      )
+      .toList();
 
   @override
   Widget build(BuildContext context) {
@@ -101,28 +86,18 @@ class _ContactsViewState extends State<ContactsView> {
       body: SafeArea(
         child: GetBuilder<HomeCtrl>(
           builder: (ctrl) {
-            final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+            // final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
 
-            final patients = ctrl.patients
-                .where((p) => p.doctorId == doctorId)
-                .toList();
-            final meetingPersons = ctrl.meetingPersons
-                .where((m) => m.doctorId == doctorId)
-                .toList();
-
-            final all = _build(patients, meetingPersons);
+            final patients = ctrl.patients.toList();
+            final all = _build(patients);
 
             final visible = all.where((c) {
-              final matchTab =
-                  _tab == _ContactTab.all ||
-                  (_tab == _ContactTab.patients && c.isPatient) ||
-                  (_tab == _ContactTab.contacts && !c.isPatient);
               final matchSearch =
                   _query.isEmpty ||
                   c.name.toLowerCase().contains(_query) ||
                   c.email.toLowerCase().contains(_query) ||
                   c.phone.contains(_query);
-              return matchTab && matchSearch;
+              return matchSearch;
             }).toList()..sort((a, b) => a.name.compareTo(b.name));
 
             return Column(
@@ -167,7 +142,7 @@ class _ContactsViewState extends State<ContactsView> {
                                   ),
                                 ),
                                 Text(
-                                  '${patients.length} patients · ${meetingPersons.length} contacts',
+                                  '${patients.length} contact${patients.length == 1 ? '' : 's'}',
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     color: DrColors.textSecondary,
@@ -176,6 +151,70 @@ class _ContactsViewState extends State<ContactsView> {
                               ],
                             ),
                           ),
+                          SizedBox(width: 10),
+                          true
+                              ? GestureDetector(
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) =>
+                                          const _CreateContactDialog(),
+                                    );
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: DrColors.surface,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: DrColors.border,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          CupertinoIcons.add,
+                                          size: 13,
+                                          color: DrColors.primary,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          'Add',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: DrColors.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : IconButton(
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: DrColors.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) =>
+                                          const _CreateContactDialog(),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.add_rounded,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -253,36 +292,6 @@ class _ContactsViewState extends State<ContactsView> {
                         ),
                       ),
                       const SizedBox(height: 10),
-
-                      // ── Type tabs ───────────────────────────────────
-                      Row(
-                        children: [
-                          _TypeTab(
-                            label: 'All',
-                            count: all.length,
-                            active: _tab == _ContactTab.all,
-                            onTap: () => setState(() => _tab = _ContactTab.all),
-                          ),
-                          const SizedBox(width: 8),
-                          _TypeTab(
-                            label: 'Patients',
-                            count: patients.length,
-                            active: _tab == _ContactTab.patients,
-                            color: DrColors.primary,
-                            onTap: () =>
-                                setState(() => _tab = _ContactTab.patients),
-                          ),
-                          const SizedBox(width: 8),
-                          _TypeTab(
-                            label: 'Contacts',
-                            count: meetingPersons.length,
-                            active: _tab == _ContactTab.contacts,
-                            color: DrColors.accent,
-                            onTap: () =>
-                                setState(() => _tab = _ContactTab.contacts),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -323,67 +332,7 @@ class _ContactsViewState extends State<ContactsView> {
 // Widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TypeTab extends StatelessWidget {
-  final String label;
-  final int count;
-  final bool active;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _TypeTab({
-    required this.label,
-    required this.count,
-    required this.active,
-    required this.onTap,
-    this.color = DrColors.textSecondary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = active ? color : DrColors.textSecondary;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: active ? color.withValues(alpha: 0.10) : DrColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: active ? color : DrColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: c,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: active ? color.withValues(alpha: 0.15) : DrColors.border,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: active ? color : DrColors.textTertiary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// Type tabs removed as contacts are unified
 
 class _ContactCard extends StatelessWidget {
   final ContactEntry contact;
@@ -391,24 +340,8 @@ class _ContactCard extends StatelessWidget {
   const _ContactCard({required this.contact, required this.onTap});
 
   Future<void> _call() async {
-    var phone = contact.phone.trim();
+    final phone = cleanPhoneNumber(contact.phone);
     if (phone.isEmpty) return;
-
-    // Remove spaces, dashes, brackets, etc.
-    phone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-
-    // If already has +, keep it (international number)
-    if (phone.startsWith('+')) {
-      // nothing to do
-    }
-    // If starts with 91 and has no +
-    else if (phone.startsWith('91') && phone.length > 10) {
-      phone = '+$phone';
-    }
-    // Otherwise assume Indian local number
-    else {
-      phone = '+91$phone';
-    }
 
     final uri = Uri(scheme: 'tel', path: phone);
     if (await canLaunchUrl(uri)) {
@@ -620,7 +553,7 @@ class _EmptyState extends StatelessWidget {
           Text(
             hasSearch
                 ? 'Try a different name, email or phone'
-                : 'Patients and meeting contacts will appear here',
+                : 'Contacts will appear here',
             style: GoogleFonts.inter(
               fontSize: 12,
               color: DrColors.textTertiary,
@@ -628,6 +561,155 @@ class _EmptyState extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Create Contact Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CreateContactDialog extends StatefulWidget {
+  const _CreateContactDialog();
+
+  @override
+  State<_CreateContactDialog> createState() => _CreateContactDialogState();
+}
+
+class _CreateContactDialogState extends State<_CreateContactDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameCtrl = TextEditingController();
+  late final TextEditingController _phoneCtrl;
+  late String _dialCode;
+
+  final _emailCtrl = TextEditingController();
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _dialCode = '+91';
+    _phoneCtrl = TextEditingController();
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _loading = true);
+    final fullPhone = '$_dialCode ${_phoneCtrl.text.trim()}';
+
+    final p = await HomeCtrl.to.createPatient(
+      name: _nameCtrl.text,
+      email: _emailCtrl.text,
+      phone: fullPhone,
+    );
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (p != null) {
+      Navigator.pop(context);
+      AppSnackbar.success(context, 'Contact created successfully.');
+    } else {
+      AppSnackbar.error(context, 'Failed to create contact.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Create Contact',
+                style: GoogleFonts.inter(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: DrColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                label: 'Full Name *',
+                hint: 'Contact name',
+                controller: _nameCtrl,
+                textCapitalization: TextCapitalization.words,
+                autofocus: true,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 12),
+              PhoneInputField(
+                controller: _phoneCtrl,
+                selectedDialCode: _dialCode,
+                onDialCodeChanged: (v) => setState(() => _dialCode = v),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  final fullPhone = '$_dialCode ${v.trim()}';
+                  if (!isValidPhoneNumber(fullPhone)) {
+                    return 'Enter a valid phone number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                label: 'Email',
+                hint: 'contact@example.com',
+                controller: _emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null; // optional
+                  if (!isValidEmail(v.trim())) {
+                    return 'Enter a valid email address';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _save,
+                      child: _loading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text('Create'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

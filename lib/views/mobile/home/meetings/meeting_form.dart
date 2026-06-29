@@ -10,13 +10,15 @@ import '../../../../utils/app_theme.dart';
 import '../../../../utils/firebase.dart';
 import '../../../../widgets/app_snackbar.dart';
 import '../../../../widgets/app_text_field.dart';
+import '../../../../widgets/phone_input_field.dart';
+import '../../../../utils/phone_helper.dart';
 
 const _meetingTypes = [
-  'business',
-  'consultation',
-  'follow_up',
-  'review',
-  'other',
+  'Business',
+  'Consultation',
+  'Follow up',
+  'Review',
+  'Other',
 ];
 
 class MeetingFormSheet extends StatefulWidget {
@@ -92,7 +94,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
         'label': 'Today',
         'subtitle': DateFormat('d MMM, EEE').format(today),
         'active': isToday,
-        'date': today
+        'date': today,
       },
       {
         'id': 'tomorrow',
@@ -115,7 +117,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
             ? DateFormat('d MMM, EEE').format(_date!)
             : 'Select',
         'active': isCustom,
-        'date': _date
+        'date': _date,
       },
     ];
 
@@ -580,7 +582,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
             : 'Select',
         'active': isCustom,
         'minutes': -1,
-      }
+      },
     ];
 
     return Column(
@@ -752,28 +754,51 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                       validator: (v) =>
                           v == null || v.trim().isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
-                    // Type
-                    // _labelText('Meeting Type'),
-                    // const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      value: _meetingType,
-                      decoration: const InputDecoration(
-                        labelText: 'Meeting Type *',
-                        hintText: 'Select meeting type',
-                      ),
-                      items: _meetingTypes
-                          .map(
-                            (t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(
-                                t.replaceAll('_', ' ').toUpperCase(),
-                                style: GoogleFonts.inter(fontSize: 14),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _meetingTypes.map((t) {
+                        final isSelected = _titleCtrl.text.trim() == t;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _titleCtrl.text = t;
+                              _meetingType = t;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? DrColors.primary.withValues(alpha: 0.1)
+                                  : DrColors.background,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isSelected
+                                    ? DrColors.primary
+                                    : DrColors.border,
+                                width: 1,
                               ),
                             ),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => _meetingType = v!),
+                            child: Text(
+                              t,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isSelected
+                                    ? DrColors.primary
+                                    : DrColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 16),
                     AppTextField(
@@ -1135,7 +1160,8 @@ class _QuickCreatePersonDialog extends StatefulWidget {
 class _QuickCreatePersonDialogState extends State<_QuickCreatePersonDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
+  late final TextEditingController _phoneCtrl;
+  late String _dialCode;
   final _emailCtrl = TextEditingController();
   bool _loading = false;
 
@@ -1147,13 +1173,21 @@ class _QuickCreatePersonDialogState extends State<_QuickCreatePersonDialog> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _dialCode = '+91';
+    _phoneCtrl = TextEditingController();
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
+    final fullPhone = '$_dialCode ${_phoneCtrl.text.trim()}';
     final p = await HomeCtrl.to.createMeetingPerson(
       name: _nameCtrl.text,
       email: _emailCtrl.text,
-      phone: _phoneCtrl.text,
+      phone: fullPhone,
     );
     if (!mounted) return;
     setState(() => _loading = false);
@@ -1195,13 +1229,18 @@ class _QuickCreatePersonDialogState extends State<_QuickCreatePersonDialog> {
                     v == null || v.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 12),
-              AppTextField(
-                label: 'Phone *',
-                hint: '+91 9876543210',
+              PhoneInputField(
                 controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Required' : null,
+                selectedDialCode: _dialCode,
+                onDialCodeChanged: (v) => setState(() => _dialCode = v),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  final fullPhone = '$_dialCode ${v.trim()}';
+                  if (!isValidPhoneNumber(fullPhone)) {
+                    return 'Enter a valid phone number';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               AppTextField(
@@ -1209,6 +1248,13 @@ class _QuickCreatePersonDialogState extends State<_QuickCreatePersonDialog> {
                 hint: 'email@example.com',
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null; // optional
+                  if (!isValidEmail(v.trim())) {
+                    return 'Enter a valid email address';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
               Row(

@@ -7,7 +7,7 @@ class MeetingPersonModel {
   final String email;
   final String phone;
   final String createdByRole;
-  final String? doctorId;
+  // final String? doctorId;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -18,7 +18,7 @@ class MeetingPersonModel {
     required this.email,
     required this.phone,
     required this.createdByRole,
-    this.doctorId,
+    // this.doctorId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -31,11 +31,9 @@ class MeetingPersonModel {
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       createdByRole: json['createdByRole'] ?? '',
-      doctorId: json['doctorId'],
-      createdAt:
-          (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt:
-          (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      // doctorId: json['doctorId'],
+      createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -50,11 +48,9 @@ class MeetingPersonModel {
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       createdByRole: json['createdByRole'] ?? '',
-      doctorId: json['doctorId'],
-      createdAt:
-          (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt:
-          (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      // doctorId: json['doctorId'],
+      createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -66,7 +62,7 @@ class MeetingPersonModel {
       'email': email,
       'phone': phone,
       'createdByRole': createdByRole,
-      'doctorId': doctorId,
+      //'doctorId': doctorId,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };

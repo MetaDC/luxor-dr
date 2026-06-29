@@ -505,7 +505,10 @@ class _AppointmentCard extends StatelessWidget {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              _StatusBadge(label: _statusLabel(), color: statusColor),
+                              _StatusBadge(
+                                label: _statusLabel(),
+                                color: statusColor,
+                              ),
                             ],
                           ),
                         ],
@@ -625,11 +628,7 @@ class _AppointmentCard extends StatelessWidget {
             color: DrColors.primaryLight,
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: DrColors.primary,
-          ),
+          child: Icon(icon, size: 18, color: DrColors.primary),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -946,11 +945,11 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
         );
       }
     } else {
-      if (_reasonCtrl.text.trim().isEmpty) {
-        setState(() => _loading = false);
-        AppSnackbar.error(context, 'Please enter a cancellation reason.');
-        return;
-      }
+      // if (_reasonCtrl.text.trim().isEmpty) {
+      //   setState(() => _loading = false);
+      //   AppSnackbar.error(context, 'Please enter a cancellation reason.');
+      //   return;
+      // }
       if (widget.docType == 'appointment') {
         ok = await ctrl.cancelAppointment(
           docId: widget.docId,
@@ -1078,7 +1077,7 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
             if (_chosen == 'Cancelled') ...[
               const SizedBox(height: 16),
               Text(
-                'Cancellation Reason *',
+                'Cancellation Reason (optional)',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,

@@ -6,6 +6,7 @@ import '../../../../controllers/auth_ctrl.dart';
 import '../../../../controllers/home_ctrl.dart';
 import '../../../../models/app_meet_model.dart';
 import '../../../../utils/app_theme.dart';
+import '../../../../utils/phone_helper.dart';
 import 'contacts_view.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,7 +101,9 @@ class _ContactDetailViewState extends State<ContactDetailView> {
   }
 
   Future<void> _call(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
+    final cleaned = cleanPhoneNumber(phone);
+    if (cleaned.isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: cleaned);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }

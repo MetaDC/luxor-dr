@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../controllers/home_ctrl.dart';
 import '../../../../models/app_meet_model.dart';
 import '../../../../utils/app_theme.dart';
+import '../../../../utils/phone_helper.dart';
 import '../../../../widgets/app_snackbar.dart';
 import '../appointments/appointment_form.dart';
 import '../meetings/meeting_form.dart';
@@ -29,6 +32,11 @@ class _ScheduleViewState extends State<ScheduleView> {
   bool _isRangeMode = false;
   late _TypeFilter _typeFilter;
 
+  StreamSubscription<List<AppointmentMeetingModel>>? _apptSub;
+  StreamSubscription<List<AppointmentMeetingModel>>? _meetingSub;
+  List<AppointmentMeetingModel> _appts = [];
+  List<AppointmentMeetingModel> _meetings = [];
+
   List<AppointmentMeetingModel> _fetched = [];
   bool _loading = false;
 
@@ -46,7 +54,7 @@ class _ScheduleViewState extends State<ScheduleView> {
   void initState() {
     super.initState();
     _initFilters();
-    _fetchForDate(_selectedDate);
+    _listenForDate(_selectedDate);
   }
 
   void _initFilters() {
@@ -69,41 +77,112 @@ class _ScheduleViewState extends State<ScheduleView> {
     }
   }
 
-  Future<void> _fetchForDate(DateTime date) async {
-    setState(() => _loading = true);
-    final results = await Future.wait([
-      HomeCtrl.to.fetchAppointmentsForDate(date),
-      HomeCtrl.to.fetchMeetingsForDate(date),
-    ]);
-    if (!mounted) return;
-    final all = [...results[0], ...results[1]]
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
-    setState(() {
-      _fetched = all;
-      _loading = false;
-    });
+  void _cancelSubs() {
+    _apptSub?.cancel();
+    _meetingSub?.cancel();
   }
 
-  Future<void> _fetchForRange(DateTimeRange range) async {
-    setState(() => _loading = true);
-    final results = await Future.wait([
-      HomeCtrl.to.fetchAppointmentsForRange(range.start, range.end),
-      HomeCtrl.to.fetchMeetingsForRange(range.start, range.end),
-    ]);
-    if (!mounted) return;
-    final all = [...results[0], ...results[1]]
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+  @override
+  void dispose() {
+    _cancelSubs();
+    super.dispose();
+  }
+
+  void _listenForDate(DateTime date) {
+    _cancelSubs();
     setState(() {
-      _fetched = all;
-      _loading = false;
+      _loading = true;
+      _appts = [];
+      _meetings = [];
+      _fetched = [];
     });
+
+    _apptSub = HomeCtrl.to
+        .listenAppointmentsForDate(date)
+        .listen(
+          (appts) {
+            if (!mounted) return;
+            setState(() {
+              _appts = appts;
+              _updateFetched();
+              _loading = false;
+            });
+          },
+          onError: (e) {
+            if (mounted) setState(() => _loading = false);
+          },
+        );
+
+    _meetingSub = HomeCtrl.to
+        .listenMeetingsForDate(date)
+        .listen(
+          (meetings) {
+            if (!mounted) return;
+            setState(() {
+              _meetings = meetings;
+              _updateFetched();
+              _loading = false;
+            });
+          },
+          onError: (e) {
+            if (mounted) setState(() => _loading = false);
+          },
+        );
+  }
+
+  void _listenForRange(DateTimeRange range) {
+    _cancelSubs();
+    setState(() {
+      _loading = true;
+      _appts = [];
+      _meetings = [];
+      _fetched = [];
+    });
+
+    _apptSub = HomeCtrl.to
+        .listenAppointmentsForRange(range.start, range.end)
+        .listen(
+          (appts) {
+            if (!mounted) return;
+            setState(() {
+              _appts = appts;
+              _updateFetched();
+              _loading = false;
+            });
+          },
+          onError: (e) {
+            if (mounted) setState(() => _loading = false);
+          },
+        );
+
+    _meetingSub = HomeCtrl.to
+        .listenMeetingsForRange(range.start, range.end)
+        .listen(
+          (meetings) {
+            if (!mounted) return;
+            setState(() {
+              _meetings = meetings;
+              _updateFetched();
+              _loading = false;
+            });
+          },
+          onError: (e) {
+            if (mounted) setState(() => _loading = false);
+          },
+        );
+  }
+
+  void _updateFetched() {
+    final all = [..._appts, ..._meetings]
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    _fetched = all;
   }
 
   void _refresh() {
     if (_isRangeMode && _dateRange != null) {
-      _fetchForRange(_dateRange!);
+      _listenForRange(_dateRange!);
     } else {
-      _fetchForDate(_selectedDate);
+      _listenForDate(_selectedDate);
     }
   }
 
@@ -143,7 +222,7 @@ class _ScheduleViewState extends State<ScheduleView> {
         _dateRange = range;
         _isRangeMode = true;
       });
-      await _fetchForRange(range);
+      _listenForRange(range);
     }
   }
 
@@ -152,7 +231,7 @@ class _ScheduleViewState extends State<ScheduleView> {
       _dateRange = null;
       _isRangeMode = false;
     });
-    _fetchForDate(_selectedDate);
+    _listenForDate(_selectedDate);
   }
 
   int get _apptCount =>
@@ -285,7 +364,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                           return GestureDetector(
                             onTap: () {
                               setState(() => _selectedDate = d);
-                              _fetchForDate(d);
+                              _listenForDate(d);
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -577,6 +656,45 @@ class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({required this.item, required this.onRefresh});
 
   bool get _isAppt => item.docType == 'appointment';
+
+  Future<void> _call(BuildContext context, String phone) async {
+    final cleaned = cleanPhoneNumber(phone);
+    if (cleaned.isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: cleaned);
+    try {
+      final success = await launchUrl(uri);
+      if (!success && context.mounted) {
+        AppSnackbar.error(context, 'Could not start phone call.');
+      }
+    } catch (_) {
+      if (context.mounted) {
+        AppSnackbar.error(context, 'Could not start phone call.');
+      }
+    }
+  }
+
+  Future<void> _openWhatsApp(BuildContext context, String phone) async {
+    final cleaned = cleanPhoneNumber(phone).replaceAll('+', '');
+    if (cleaned.isEmpty) {
+      AppSnackbar.error(context, 'Invalid phone number for WhatsApp.');
+      return;
+    }
+    final uri = Uri.parse('https://wa.me/$cleaned');
+    try {
+      final success = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!success && context.mounted) {
+        AppSnackbar.error(context, 'Could not open WhatsApp.');
+      }
+    } catch (_) {
+      if (context.mounted) {
+        AppSnackbar.error(context, 'Could not open WhatsApp.');
+      }
+    }
+  }
+
   Color get _typeColor => _isAppt ? DrColors.primary : DrColors.accent;
 
   Color get _accentColor {
@@ -586,18 +704,15 @@ class _ScheduleCard extends StatelessWidget {
   }
 
   String get _mainTitle {
-    if (_isAppt) return item.personName;
+    return item.personName;
     final sd = item.shortDescription;
     return (sd != null && sd.isNotEmpty) ? sd : item.personName;
   }
 
   String get _subtitle {
-    if (_isAppt) {
-      final sd = item.shortDescription;
-      return (sd != null && sd.isNotEmpty)
-          ? sd
-          : item.type.replaceAll('_', ' ');
-    }
+    final sd = item.shortDescription;
+    return (sd != null && sd.isNotEmpty) ? sd : item.type.replaceAll('_', ' ');
+
     final desc = item.description;
     return (desc != null && desc.isNotEmpty) ? desc : '';
   }
@@ -644,9 +759,17 @@ class _ScheduleCard extends StatelessWidget {
       );
       return;
     }
-    showModalBottomSheet(
+    showBottomSheet(
+      showDragHandle: false,
+
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color.fromARGB(255, 234, 234, 234),
+      // elevation: 2,
+      // color: DrColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      // borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       builder: (_) => _StatusUpdateSheet(
         docId: item.docId,
         docType: item.docType,
@@ -659,8 +782,11 @@ class _ScheduleCard extends StatelessWidget {
     final statusColor = _statusColor();
     final themeColor = _typeColor;
 
-    final hasSummary = item.status == 'Completed' && (item.summary ?? '').isNotEmpty;
-    final hasCancellation = item.status == 'Cancelled' && (item.cancellationReason ?? '').isNotEmpty;
+    final hasSummary =
+        item.status == 'Completed' && (item.summary ?? '').isNotEmpty;
+    final hasCancellation =
+        item.status == 'Cancelled' &&
+        (item.cancellationReason ?? '').isNotEmpty;
     final showExtraBlock = hasSummary || hasCancellation;
 
     showDialog(
@@ -730,7 +856,9 @@ class _ScheduleCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              DateFormat('EEEE, MMMM d, yyyy').format(item.startTime),
+                              DateFormat(
+                                'EEEE, MMMM d, yyyy',
+                              ).format(item.startTime),
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -750,17 +878,71 @@ class _ScheduleCard extends StatelessWidget {
                         ),
                       ),
                       _buildTimelineItem(
-                        icon: _isAppt ? Icons.person_rounded : Icons.groups_rounded,
+                        icon: _isAppt
+                            ? Icons.person_rounded
+                            : Icons.groups_rounded,
                         label: _isAppt ? 'Patient' : 'Meeting Person',
                         themeColor: themeColor,
                         isLast: false,
-                        content: Text(
-                          item.personName,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: DrColors.textPrimary,
-                          ),
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.personName,
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: DrColors.textPrimary,
+                              ),
+                            ),
+                            if (item.personPhone.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item.personPhone,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: DrColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            if (item.personEmail.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                item.personEmail,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: DrColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                _ActionChip(
+                                  icon: Icons.phone_rounded,
+                                  label: 'Call',
+                                  color: const Color(0xFF0B57D0),
+                                  onTap: () => _call(ctx, item.personPhone),
+                                ),
+                                const SizedBox(width: 8),
+                                _ActionChip(
+                                  icon: Icons.chat_rounded,
+                                  label: 'WhatsApp',
+                                  color: const Color(0xFF128C7E),
+                                  onTap: () =>
+                                      _openWhatsApp(ctx, item.personPhone),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                       _buildTimelineItem(
@@ -772,7 +954,10 @@ class _ScheduleCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: themeColor.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(100),
@@ -881,58 +1066,53 @@ class _ScheduleCard extends StatelessWidget {
     required Color themeColor,
     required bool isLast,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: themeColor.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 18,
-                color: themeColor,
-              ),
-            ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 38,
-                color: DrColors.border.withValues(alpha: 0.6),
-              ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
             children: [
-              Text(
-                label.toUpperCase(),
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: DrColors.textTertiary,
-                  letterSpacing: 0.5,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: themeColor.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
                 ),
+                child: Icon(icon, size: 18, color: themeColor),
               ),
-              const SizedBox(height: 4),
-              content,
-              const SizedBox(height: 16),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: DrColors.border.withValues(alpha: 0.6),
+                  ),
+                ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: DrColors.textTertiary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                content,
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
-
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -1210,11 +1390,11 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
               summary: _summaryCtrl.text.trim(),
             );
     } else {
-      if (_reasonCtrl.text.trim().isEmpty) {
-        setState(() => _loading = false);
-        AppSnackbar.error(context, 'Please enter a cancellation reason.');
-        return;
-      }
+      // if (_reasonCtrl.text.trim().isEmpty) {
+      //   setState(() => _loading = false);
+      //   AppSnackbar.error(context, 'Please enter a cancellation reason.');
+      //   return;
+      // }
       ok = widget.docType == 'appointment'
           ? await ctrl.cancelAppointment(
               docId: widget.docId,
@@ -1243,10 +1423,17 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Container(
-      margin: const EdgeInsets.only(top: 80),
+      // margin: const EdgeInsets.only(top: 80),
       decoration: const BoxDecoration(
         color: DrColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Color.fromARGB(255, 244, 244, 244),
+            blurRadius: 10,
+            spreadRadius: 5,
+          ),
+        ],
       ),
       padding: EdgeInsets.fromLTRB(20, 20, 20, bottom + 24),
       child: SingleChildScrollView(
@@ -1336,7 +1523,7 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
             if (_chosen == 'Cancelled') ...[
               const SizedBox(height: 16),
               Text(
-                'Cancellation Reason *',
+                'Cancellation Reason (optional)',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -1443,6 +1630,61 @@ class _StatusChoiceCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action Chip for calls/whatsapp
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withOpacity(0.06),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        highlightColor: color.withOpacity(0.12),
+        splashColor: color.withOpacity(0.08),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withOpacity(0.18), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

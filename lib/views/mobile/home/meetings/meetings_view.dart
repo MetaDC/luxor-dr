@@ -43,13 +43,24 @@ class _MeetingsViewState extends State<MeetingsView> {
   Future<void> _fetchForDate(DateTime date) async {
     setState(() => _loading = true);
     final results = await HomeCtrl.to.fetchMeetingsForDate(date);
-    if (mounted) setState(() { _fetched = results; _loading = false; });
+    if (mounted)
+      setState(() {
+        _fetched = results;
+        _loading = false;
+      });
   }
 
   Future<void> _fetchForRange(DateTimeRange range) async {
     setState(() => _loading = true);
-    final results = await HomeCtrl.to.fetchMeetingsForRange(range.start, range.end);
-    if (mounted) setState(() { _fetched = results; _loading = false; });
+    final results = await HomeCtrl.to.fetchMeetingsForRange(
+      range.start,
+      range.end,
+    );
+    if (mounted)
+      setState(() {
+        _fetched = results;
+        _loading = false;
+      });
   }
 
   List<AppointmentMeetingModel> get _filtered {
@@ -62,7 +73,8 @@ class _MeetingsViewState extends State<MeetingsView> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      initialDateRange: _dateRange ??
+      initialDateRange:
+          _dateRange ??
           DateTimeRange(
             start: _selectedDate,
             end: _selectedDate.add(const Duration(days: 6)),
@@ -148,7 +160,9 @@ class _MeetingsViewState extends State<MeetingsView> {
                               onTap: _clearRange,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
                                   color: DrColors.accent.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
@@ -156,8 +170,11 @@ class _MeetingsViewState extends State<MeetingsView> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.close_rounded,
-                                        size: 14, color: DrColors.accent),
+                                    const Icon(
+                                      Icons.close_rounded,
+                                      size: 14,
+                                      color: DrColors.accent,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'Clear Range',
@@ -175,7 +192,9 @@ class _MeetingsViewState extends State<MeetingsView> {
                               onTap: _pickDateRange,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
                                   color: DrColors.surface,
                                   borderRadius: BorderRadius.circular(8),
@@ -184,8 +203,11 @@ class _MeetingsViewState extends State<MeetingsView> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.date_range_rounded,
-                                        size: 14, color: DrColors.accent),
+                                    const Icon(
+                                      Icons.date_range_rounded,
+                                      size: 14,
+                                      color: DrColors.accent,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'Range',
@@ -213,7 +235,8 @@ class _MeetingsViewState extends State<MeetingsView> {
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (_, i) {
                           final d = dates[i];
-                          final isSelected = d.year == _selectedDate.year &&
+                          final isSelected =
+                              d.year == _selectedDate.year &&
                               d.month == _selectedDate.month &&
                               d.day == _selectedDate.day;
                           return GestureDetector(
@@ -293,12 +316,18 @@ class _MeetingsViewState extends State<MeetingsView> {
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: active ? DrColors.accent : DrColors.surface,
+                              color: active
+                                  ? DrColors.accent
+                                  : DrColors.surface,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: active ? DrColors.accent : DrColors.border,
+                                color: active
+                                    ? DrColors.accent
+                                    : DrColors.border,
                               ),
                             ),
                             child: Text(
@@ -331,44 +360,43 @@ class _MeetingsViewState extends State<MeetingsView> {
                       ),
                     )
                   : _filtered.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.groups_rounded,
-                                size: 48,
-                                color: DrColors.textTertiary.withOpacity(0.5),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No meetings',
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  color: DrColors.textSecondary,
-                                ),
-                              ),
-                              if (_statusFilter != 'All')
-                                TextButton(
-                                  onPressed: () =>
-                                      setState(() => _statusFilter = 'All'),
-                                  child: const Text('Clear filter'),
-                                ),
-                            ],
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.groups_rounded,
+                            size: 48,
+                            color: DrColors.textTertiary.withOpacity(0.5),
                           ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-                          itemCount: _filtered.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (_, i) => _MeetingCard(
-                            meeting: _filtered[i],
-                            onRefresh: _isRangeMode
-                                ? () => _fetchForRange(_dateRange!)
-                                : () => _fetchForDate(_selectedDate),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No meetings',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              color: DrColors.textSecondary,
+                            ),
                           ),
-                        ),
+                          if (_statusFilter != 'All')
+                            TextButton(
+                              onPressed: () =>
+                                  setState(() => _statusFilter = 'All'),
+                              child: const Text('Clear filter'),
+                            ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                      itemCount: _filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) => _MeetingCard(
+                        meeting: _filtered[i],
+                        onRefresh: _isRangeMode
+                            ? () => _fetchForRange(_dateRange!)
+                            : () => _fetchForDate(_selectedDate),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -473,7 +501,10 @@ class _MeetingCard extends StatelessWidget {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              _StatusBadge(label: _statusLabel(), color: statusColor),
+                              _StatusBadge(
+                                label: _statusLabel(),
+                                color: statusColor,
+                              ),
                             ],
                           ),
                         ],
@@ -499,7 +530,11 @@ class _MeetingCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                _buildDetailRow(Icons.groups_outlined, 'Meeting Person', meeting.personName),
+                _buildDetailRow(
+                  Icons.groups_outlined,
+                  'Meeting Person',
+                  meeting.personName,
+                ),
                 const SizedBox(height: 16),
                 _buildDetailRow(
                   Icons.calendar_today_rounded,
@@ -514,13 +549,22 @@ class _MeetingCard extends StatelessWidget {
                 ),
                 if ((meeting.shortDescription ?? '').isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  _buildDetailRow(Icons.title_rounded, 'Title', meeting.shortDescription!),
+                  _buildDetailRow(
+                    Icons.title_rounded,
+                    'Title',
+                    meeting.shortDescription!,
+                  ),
                 ],
                 if ((meeting.description ?? '').isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  _buildDetailRow(Icons.location_on_outlined, 'Location / Venue', meeting.description!),
+                  _buildDetailRow(
+                    Icons.location_on_outlined,
+                    'Location / Venue',
+                    meeting.description!,
+                  ),
                 ],
-                if (meeting.status == 'Completed' && (meeting.summary ?? '').isNotEmpty) ...[
+                if (meeting.status == 'Completed' &&
+                    (meeting.summary ?? '').isNotEmpty) ...[
                   const SizedBox(height: 20),
                   _buildSectionBlock(
                     title: 'Completion Summary',
@@ -529,7 +573,8 @@ class _MeetingCard extends StatelessWidget {
                     color: DrColors.success,
                   ),
                 ],
-                if (meeting.status == 'Cancelled' && (meeting.cancellationReason ?? '').isNotEmpty) ...[
+                if (meeting.status == 'Cancelled' &&
+                    (meeting.cancellationReason ?? '').isNotEmpty) ...[
                   const SizedBox(height: 20),
                   _buildSectionBlock(
                     title: 'Cancellation Reason',
@@ -547,7 +592,9 @@ class _MeetingCard extends StatelessWidget {
                     style: TextButton.styleFrom(
                       backgroundColor: DrColors.background,
                       foregroundColor: DrColors.textPrimary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: Text(
                       'Close',
@@ -577,11 +624,7 @@ class _MeetingCard extends StatelessWidget {
             color: DrColors.accentLight,
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: DrColors.accent,
-          ),
+          child: Icon(icon, size: 18, color: DrColors.accent),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -661,7 +704,8 @@ class _MeetingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = meeting.description ?? '';
-    final showActions = meeting.status != 'Completed' && meeting.status != 'Cancelled';
+    final showActions =
+        meeting.status != 'Completed' && meeting.status != 'Cancelled';
     return Container(
       decoration: BoxDecoration(
         color: DrColors.surface,
@@ -695,19 +739,40 @@ class _MeetingCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          meeting.shortDescription ?? meeting.personName,
+                          meeting.personName,
                           style: GoogleFonts.inter(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: DrColors.textPrimary,
                           ),
                         ),
+                        if ((meeting.shortDescription ?? '').isNotEmpty)
+                          Text(
+                            meeting.shortDescription!,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: DrColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        else
+                          Text(
+                            meeting.type.replaceAll('_', ' '),
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: DrColors.textSecondary,
+                            ),
+                          ),
                         if (location.isNotEmpty) ...[
                           const SizedBox(height: 3),
                           Row(
                             children: [
-                              Icon(Icons.location_on_rounded,
-                                  size: 12, color: _accentColor),
+                              Icon(
+                                Icons.location_on_rounded,
+                                size: 12,
+                                color: _accentColor,
+                              ),
                               const SizedBox(width: 3),
                               Expanded(
                                 child: Text(
@@ -739,7 +804,9 @@ class _MeetingCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       _StatusBadge(
-                          label: _statusLabel(), color: _statusColor()),
+                        label: _statusLabel(),
+                        color: _statusColor(),
+                      ),
                     ],
                   ),
                 ],
@@ -896,11 +963,11 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
         );
       }
     } else {
-      if (_reasonCtrl.text.trim().isEmpty) {
-        setState(() => _loading = false);
-        AppSnackbar.error(context, 'Please enter a cancellation reason.');
-        return;
-      }
+      // if (_reasonCtrl.text.trim().isEmpty) {
+      //   setState(() => _loading = false);
+      //   AppSnackbar.error(context, 'Please enter a cancellation reason.');
+      //   return;
+      // }
       if (widget.docType == 'appointment') {
         ok = await ctrl.cancelAppointment(
           docId: widget.docId,
@@ -965,7 +1032,9 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
             Text(
               'Select the new status for this ${widget.docType}.',
               style: GoogleFonts.inter(
-                  fontSize: 13, color: DrColors.textSecondary),
+                fontSize: 13,
+                color: DrColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 20),
             Row(
@@ -1006,11 +1075,15 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
                 controller: _summaryCtrl,
                 maxLines: 3,
                 style: GoogleFonts.inter(
-                    fontSize: 14, color: DrColors.textPrimary),
+                  fontSize: 14,
+                  color: DrColors.textPrimary,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Brief summary...',
                   hintStyle: GoogleFonts.inter(
-                      fontSize: 14, color: DrColors.textTertiary),
+                    fontSize: 14,
+                    color: DrColors.textTertiary,
+                  ),
                 ),
                 textCapitalization: TextCapitalization.sentences,
               ),
@@ -1018,7 +1091,7 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
             if (_chosen == 'Cancelled') ...[
               const SizedBox(height: 16),
               Text(
-                'Cancellation Reason *',
+                'Cancellation Reason (optional)',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -1030,11 +1103,15 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
                 controller: _reasonCtrl,
                 maxLines: 3,
                 style: GoogleFonts.inter(
-                    fontSize: 14, color: DrColors.textPrimary),
+                  fontSize: 14,
+                  color: DrColors.textPrimary,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Reason for cancellation...',
                   hintStyle: GoogleFonts.inter(
-                      fontSize: 14, color: DrColors.textTertiary),
+                    fontSize: 14,
+                    color: DrColors.textTertiary,
+                  ),
                 ),
                 textCapitalization: TextCapitalization.sentences,
               ),
@@ -1049,15 +1126,17 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
                   backgroundColor: _chosen == 'Cancelled'
                       ? DrColors.error
                       : _chosen == 'Completed'
-                          ? DrColors.success
-                          : DrColors.accent,
+                      ? DrColors.success
+                      : DrColors.accent,
                 ),
                 child: _loading
                     ? const SizedBox(
                         width: 22,
                         height: 22,
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2.5),
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
                       )
                     : Text(
                         _chosen == null
@@ -1104,8 +1183,11 @@ class _StatusChoiceCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(icon,
-                size: 28, color: selected ? color : DrColors.textTertiary),
+            Icon(
+              icon,
+              size: 28,
+              color: selected ? color : DrColors.textTertiary,
+            ),
             const SizedBox(height: 6),
             Text(
               label,

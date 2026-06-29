@@ -10,14 +10,16 @@ import '../../../../utils/app_theme.dart';
 import '../../../../utils/firebase.dart';
 import '../../../../widgets/app_snackbar.dart';
 import '../../../../widgets/app_text_field.dart';
+import '../../../../widgets/phone_input_field.dart';
+import '../../../../utils/phone_helper.dart';
 
 const _apptTypes = [
-  'consultation',
-  'follow_up',
-  'checkup',
-  'procedure',
-  'emergency',
-  'other',
+  'Consultation',
+  'Follow up',
+  'Checkup',
+  'Procedure',
+  'Emergency',
+  'Other',
 ];
 
 class AppointmentFormSheet extends StatefulWidget {
@@ -33,7 +35,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   final _ctrl = HomeCtrl.to;
 
   PatientModel? _patient;
-  String _apptType = 'consultation';
+  String _apptType = 'Consultation';
   DateTime? _date;
   TimeOfDay? _startTOD;
   TimeOfDay? _endTOD;
@@ -93,7 +95,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
         'label': 'Today',
         'subtitle': DateFormat('d MMM, EEE').format(today),
         'active': isToday,
-        'date': today
+        'date': today,
       },
       {
         'id': 'tomorrow',
@@ -116,7 +118,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
             ? DateFormat('d MMM, EEE').format(_date!)
             : 'Select',
         'active': isCustom,
-        'date': _date
+        'date': _date,
       },
     ];
 
@@ -581,7 +583,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
             : 'Select',
         'active': isCustom,
         'minutes': -1,
-      }
+      },
     ];
 
     return Column(
@@ -757,28 +759,51 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                       validator: (v) =>
                           v == null || v.trim().isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 16),
-
-                    // _labelText('Appointment Type'),
-                    // const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      value: _apptType,
-                      decoration: const InputDecoration(
-                        labelText: 'Appointment Type *',
-                        hintText: 'Select appointment type',
-                      ),
-                      items: _apptTypes
-                          .map(
-                            (t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(
-                                t.replaceAll('_', ' ').toUpperCase(),
-                                style: GoogleFonts.inter(fontSize: 14),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _apptTypes.map((t) {
+                        final isSelected = _titleCtrl.text.trim() == t;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _titleCtrl.text = t;
+                              _apptType = t;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? DrColors.primary.withValues(alpha: 0.1)
+                                  : DrColors.background,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isSelected
+                                    ? DrColors.primary
+                                    : DrColors.border,
+                                width: 1,
                               ),
                             ),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => _apptType = v!),
+                            child: Text(
+                              t,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isSelected
+                                    ? DrColors.primary
+                                    : DrColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 16),
                     AppTextField(
@@ -898,7 +923,7 @@ final _kNoPatient = PatientModel(
   email: '',
   phone: '',
   createdByRole: '',
-  doctorId: '',
+  // doctorId: '',
   createdAt: DateTime(2000),
   updatedAt: DateTime(2000),
 );
@@ -1152,7 +1177,8 @@ class _QuickCreatePatientDialog extends StatefulWidget {
 class _QuickCreatePatientDialogState extends State<_QuickCreatePatientDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
+  late final TextEditingController _phoneCtrl;
+  late String _dialCode;
   final _emailCtrl = TextEditingController();
   bool _loading = false;
 
@@ -1164,13 +1190,24 @@ class _QuickCreatePatientDialogState extends State<_QuickCreatePatientDialog> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+
+    _dialCode = '+91';
+    _phoneCtrl = TextEditingController();
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
     setState(() => _loading = true);
+    final fullPhone = '$_dialCode ${_phoneCtrl.text.trim()}';
+
     final p = await HomeCtrl.to.createPatient(
       name: _nameCtrl.text,
       email: _emailCtrl.text,
-      phone: _phoneCtrl.text,
+      phone: fullPhone,
     );
     if (!mounted) return;
     setState(() => _loading = false);
@@ -1212,13 +1249,18 @@ class _QuickCreatePatientDialogState extends State<_QuickCreatePatientDialog> {
                     v == null || v.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 12),
-              AppTextField(
-                label: 'Phone *',
-                hint: '+91 9876543210',
+              PhoneInputField(
                 controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Required' : null,
+                selectedDialCode: _dialCode,
+                onDialCodeChanged: (v) => setState(() => _dialCode = v),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  final fullPhone = '$_dialCode ${v.trim()}';
+                  if (!isValidPhoneNumber(fullPhone)) {
+                    return 'Enter a valid phone number';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               AppTextField(
@@ -1226,6 +1268,13 @@ class _QuickCreatePatientDialogState extends State<_QuickCreatePatientDialog> {
                 hint: 'patient@example.com',
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null; // optional
+                  if (!isValidEmail(v.trim())) {
+                    return 'Enter a valid email address';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
               Row(
