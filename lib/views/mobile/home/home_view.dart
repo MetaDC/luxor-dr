@@ -97,10 +97,10 @@ class HomeView extends StatelessWidget {
                               child: _StatCard(
                                 icon: Icons.groups_rounded,
                                 color: DrColors.accent,
-                                count: ctrl.todayMeetingsCount,
-                                label: 'Meetings',
-                                onTap: () =>
-                                    context.go('/home/schedule?filter=meeting'),
+                                 count: ctrl.todayMeetingsCount,
+                                 label: 'Tasks',
+                                 onTap: () =>
+                                     context.go('/home/schedule?filter=meeting'),
                               ),
                             ),
                           ],
@@ -345,7 +345,7 @@ class _FullCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  _isAppt ? 'APPOINTMENT' : 'MEETING',
+                  _isAppt ? 'APPOINTMENT' : 'TASK',
                   style: GoogleFonts.inter(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
@@ -501,7 +501,7 @@ class _EmptyCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'No appointments or meetings coming up',
+                      'No appointments or tasks coming up',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: Colors.white70,
@@ -645,8 +645,8 @@ class _QuickActions extends StatelessWidget {
               _ActionRow(
                 icon: Icons.groups_rounded,
                 color: DrColors.accent,
-                label: 'New Meeting',
-                subtitle: 'Schedule a meeting or review',
+                label: 'New Task',
+                subtitle: 'Schedule a task or review',
                 isLast: true,
                 onTap: () => showModalBottomSheet(
                   context: parentContext,

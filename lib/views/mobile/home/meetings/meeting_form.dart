@@ -41,6 +41,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   bool _loading = false;
+  bool _showOnReception = true;
 
   DateTime? get _startTime => _date != null && _startTOD != null
       ? DateTime(
@@ -384,6 +385,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     _endTOD = TimeOfDay.fromDateTime(m.endTime);
     _titleCtrl.text = m.shortDescription ?? '';
     _descCtrl.text = m.description ?? '';
+    _showOnReception = m.showOnReception;
   }
 
   @override
@@ -472,10 +474,6 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_person == null) {
-      AppSnackbar.error(context, 'Please select a meeting person.');
-      return;
-    }
     if (_startTime == null || _endTime == null) {
       AppSnackbar.error(context, 'Please set date, start and end time.');
       return;
@@ -515,10 +513,10 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
       specialization: doctor.specialization,
       docType: 'meeting',
       type: _meetingType,
-      personId: _person!.docId,
-      personName: _person!.name,
-      personPhone: _person!.phone,
-      personEmail: _person!.email,
+      personId: _person?.docId ?? '',
+      personName: _person?.name ?? '',
+      personPhone: _person?.phone ?? '',
+      personEmail: _person?.email ?? '',
       startTime: _startTime!,
       endTime: _endTime!,
       status: widget.meeting?.status ?? 'Scheduled',
@@ -535,6 +533,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
       completedBy: widget.meeting?.completedBy,
       summary: widget.meeting?.summary,
       completedAt: widget.meeting?.completedAt,
+      showOnReception: _showOnReception,
     );
 
     final ok = widget.meeting == null
@@ -703,7 +702,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                 Row(
                   children: [
                     Text(
-                      isEdit ? 'Edit Meeting' : 'New Meeting',
+                      isEdit ? 'Edit Task' : 'New Task',
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -809,7 +808,33 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
 
                       textCapitalization: TextCapitalization.sentences,
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 16),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'Show on Reception',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: DrColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'If unchecked, this task will be visible in the doctor\'s app only.',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: DrColors.textSecondary,
+                        ),
+                      ),
+                      value: _showOnReception,
+                      activeColor: DrColors.accent,
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() => _showOnReception = v);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -1021,7 +1046,7 @@ class _PersonSelectorState extends State<_PersonSelector> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Meeting Person *',
+                    labelText: 'Task Person (Optional)',
                     hintText: 'Search by name...',
                     prefixIcon: const Icon(
                       Icons.person_search_outlined,

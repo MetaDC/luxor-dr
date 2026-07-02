@@ -39,6 +39,8 @@ class AppointmentMeetingModel {
   final String? summary;
   final DateTime? completedAt;
 
+  final bool showOnReception;
+
   AppointmentMeetingModel({
     required this.docId,
     required this.doctorId,
@@ -64,6 +66,7 @@ class AppointmentMeetingModel {
     this.completedBy,
     this.summary,
     this.completedAt,
+    required this.showOnReception,
   });
 
   factory AppointmentMeetingModel.fromJson(Map<String, dynamic> json) {
@@ -92,6 +95,7 @@ class AppointmentMeetingModel {
       completedBy: json['completedBy'],
       summary: json['summary'],
       completedAt: (json['completedAt'] as Timestamp?)?.toDate(),
+      showOnReception: json['showOnReception'] ?? true,
     );
   }
 
@@ -124,6 +128,7 @@ class AppointmentMeetingModel {
       completedBy: json['completedBy'],
       summary: json['summary'],
       completedAt: (json['completedAt'] as Timestamp?)?.toDate(),
+      showOnReception: json['showOnReception'] ?? true,
     );
   }
 
@@ -154,6 +159,7 @@ class AppointmentMeetingModel {
       'summary': summary,
       'completedAt':
           completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+      'showOnReception': showOnReception,
     };
   }
 }

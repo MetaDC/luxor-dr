@@ -79,8 +79,12 @@ class AuthCtrl extends GetxController {
   Future<void> _loadAllDoctors() async {
     try {
       final q = await FBFireStore.doctors.orderBy('name').get();
-      allDoctors = q.docs.map(DoctorModel.fromSnap).toList();
-      allDoctors.removeWhere((doctor) => doctor.email == 'admin@gmail.com');
+      final allDoctors = q.docs.map(DoctorModel.fromSnap).toList();
+      allDoctors.removeWhere(
+        (doctor) =>
+            doctor.email == 'admin@gmail.com' ||
+            doctor.email == 'luxorhospital@gmail.com',
+      );
       update();
     } catch (_) {}
   }

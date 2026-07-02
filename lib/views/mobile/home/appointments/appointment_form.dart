@@ -534,6 +534,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
       completedBy: widget.appointment?.completedBy,
       summary: widget.appointment?.summary,
       completedAt: widget.appointment?.completedAt,
+      showOnReception: true,
     );
 
     final ok = widget.appointment == null

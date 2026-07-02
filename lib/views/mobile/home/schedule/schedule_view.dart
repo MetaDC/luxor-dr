@@ -283,7 +283,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                               Text(
                                 _loading
                                     ? 'Loading...'
-                                    : '$_apptCount appt${_apptCount != 1 ? 's' : ''} · $_meetCount meeting${_meetCount != 1 ? 's' : ''}',
+                                    : '$_apptCount appt${_apptCount != 1 ? 's' : ''} · $_meetCount task${_meetCount != 1 ? 's' : ''}',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   color: DrColors.textSecondary,
@@ -479,7 +479,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                           vertical: 5,
                         ),
                         child: Text(
-                          'Meetings',
+                          'Tasks',
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -755,7 +755,7 @@ class _ScheduleCard extends StatelessWidget {
     if (item.status == 'Cancelled' || item.status == 'Completed') {
       AppSnackbar.info(
         context,
-        'This ${_isAppt ? 'appointment' : 'meeting'} is already ${item.status.toLowerCase()}.',
+        'This ${_isAppt ? 'appointment' : 'task'} is already ${item.status.toLowerCase()}.',
       );
       return;
     }
@@ -810,7 +810,7 @@ class _ScheduleCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _isAppt ? 'Appointment Detail' : 'Meeting Detail',
+                          _isAppt ? 'Appointment Detail' : 'Task Detail',
                           style: GoogleFonts.inter(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -877,74 +877,77 @@ class _ScheduleCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      _buildTimelineItem(
-                        icon: _isAppt
-                            ? Icons.person_rounded
-                            : Icons.groups_rounded,
-                        label: _isAppt ? 'Patient' : 'Meeting Person',
-                        themeColor: themeColor,
-                        isLast: false,
-                        content: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.personName,
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: DrColors.textPrimary,
+                      if (item.personName.isNotEmpty)
+                        _buildTimelineItem(
+                          icon: _isAppt
+                              ? Icons.person_rounded
+                              : Icons.groups_rounded,
+                          label: _isAppt ? 'Patient' : 'Task Person',
+                          themeColor: themeColor,
+                          isLast: false,
+                          content: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.personName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: DrColors.textPrimary,
+                                ),
                               ),
-                            ),
-                            if (item.personPhone.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      item.personPhone,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: DrColors.textSecondary,
+                              if (item.personPhone.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item.personPhone,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: DrColors.textSecondary,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            if (item.personEmail.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                item.personEmail,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: DrColors.textTertiary,
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                _ActionChip(
-                                  icon: Icons.phone_rounded,
-                                  label: 'Call',
-                                  color: const Color(0xFF0B57D0),
-                                  onTap: () => _call(ctx, item.personPhone),
-                                ),
-                                const SizedBox(width: 8),
-                                _ActionChip(
-                                  icon: Icons.chat_rounded,
-                                  label: 'WhatsApp',
-                                  color: const Color(0xFF128C7E),
-                                  onTap: () =>
-                                      _openWhatsApp(ctx, item.personPhone),
+                                  ],
                                 ),
                               ],
-                            ),
-                          ],
+                              if (item.personEmail.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  item.personEmail,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: DrColors.textTertiary,
+                                  ),
+                                ),
+                              ],
+                              if (item.personPhone.isNotEmpty)
+                                const SizedBox(height: 8),
+                              if (item.personPhone.isNotEmpty)
+                                Row(
+                                  children: [
+                                    _ActionChip(
+                                      icon: Icons.phone_rounded,
+                                      label: 'Call',
+                                      color: const Color(0xFF0B57D0),
+                                      onTap: () => _call(ctx, item.personPhone),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _ActionChip(
+                                      icon: Icons.chat_rounded,
+                                      label: 'WhatsApp',
+                                      color: const Color(0xFF128C7E),
+                                      onTap: () =>
+                                          _openWhatsApp(ctx, item.personPhone),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
                       _buildTimelineItem(
                         icon: Icons.bookmark_rounded,
                         label: 'Details',
@@ -1170,7 +1173,7 @@ class _ScheduleCard extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      _isAppt ? 'Appointment' : 'Meeting',
+                                      _isAppt ? 'Appointment' : 'Task',
                                       style: GoogleFonts.inter(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
@@ -1412,7 +1415,7 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
       widget.onDone();
       AppSnackbar.success(
         context,
-        '${widget.docType == 'appointment' ? 'Appointment' : 'Meeting'} marked as $_chosen.',
+        '${widget.docType == 'appointment' ? 'Appointment' : 'Task'} marked as $_chosen.',
       );
     } else {
       AppSnackbar.error(context, 'Something went wrong. Please try again.');

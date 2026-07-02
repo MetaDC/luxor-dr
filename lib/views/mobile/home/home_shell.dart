@@ -466,8 +466,8 @@ class _NewItemSheet extends StatelessWidget {
                 _SheetOption(
                   icon: Icons.groups_rounded,
                   color: DrColors.accent,
-                  label: 'New Meeting',
-                  subtitle: 'Schedule a meeting or review',
+                  label: 'New Task',
+                  subtitle: 'Schedule a task or review',
                   onTap: () {
                     Navigator.pop(context);
                     showModalBottomSheet(
