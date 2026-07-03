@@ -12,4 +12,5 @@ class FBFireStore {
   static final doctors = _db.collection('Doctors');
   static final patients = _db.collection('Contacts');
   static final meetingPersons = _db.collection('Contacts');
+  static final settings = _db.collection('settings').doc('sets');
 }

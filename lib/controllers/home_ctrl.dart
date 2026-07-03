@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io' as io;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../models/app_meet_model.dart';
 import '../models/meeting_per_model.dart';
 import '../models/patient_model.dart';
@@ -15,6 +17,7 @@ class HomeCtrl extends GetxController {
   bool dataLoaded = false;
 
   List<PatientModel> patients = [];
+  int patientsCount = 0;
   List<MeetingPersonModel> get meetingPersons => patients
       .map(
         (p) => MeetingPersonModel(
@@ -42,11 +45,15 @@ class HomeCtrl extends GetxController {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _meetingsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _todayApptsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _todayMtgsStream;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _settingsSub;
   Timer? _clockTimer;
+
+  bool versionSupported = true;
 
   @override
   void onInit() {
     super.onInit();
+    _startSettingsStream();
     _authSub = FBAuth.auth.authStateChanges().listen((user) {
       if (user != null) {
         _startStreams();
@@ -60,9 +67,43 @@ class HomeCtrl extends GetxController {
   @override
   void onClose() {
     _authSub?.cancel();
+    _settingsSub?.cancel();
     _clockTimer?.cancel();
     _cancelAll();
     super.onClose();
+  }
+
+  void _startSettingsStream() {
+    _settingsSub = FBFireStore.settings.snapshots().listen((snapshot) async {
+      if (!snapshot.exists) return;
+      final data = snapshot.data();
+      if (data == null) return;
+
+      String? firebaseBuildStr;
+      if (io.Platform.isAndroid) {
+        firebaseBuildStr = data['andbuildNumber']?.toString();
+      } else {
+        firebaseBuildStr = data['iosbuildNumber']?.toString();
+      }
+      // Fallback to generic minversion field
+      firebaseBuildStr ??= data['minversion']?.toString() ?? data['minVersion']?.toString();
+
+      if (firebaseBuildStr == null || firebaseBuildStr.isEmpty) return;
+
+      try {
+        final packageInfo = await PackageInfo.fromPlatform();
+        final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
+        final minBuild = int.tryParse(firebaseBuildStr) ?? 0;
+        final supported = currentBuild >= minBuild;
+        debugPrint('Version check — current: $currentBuild, required: $minBuild, supported: $supported');
+        if (versionSupported != supported) {
+          versionSupported = supported;
+          update();
+        }
+      } catch (e) {
+        debugPrint('Version check error: $e');
+      }
+    }, onError: (e) => debugPrint('Settings stream error: $e'));
   }
 
   void _startStreams() async {
@@ -82,8 +123,7 @@ class HomeCtrl extends GetxController {
   }
 
   void _launchStreams(String doctorId) {
-    print("object------");
-    getPatients();
+    _fetchPatientsCount();
     // getAppointments(doctorId);
     // getMeetings(doctorId);
     getTodayAppointments(doctorId);
@@ -94,11 +134,6 @@ class HomeCtrl extends GetxController {
     // Tick every minute so upcomingNextHour re-evaluates as the clock moves
     _clockTimer?.cancel();
     _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) => update());
-
-    print("Patients: ${patients.length}");
-    print("Meting persons: ${meetingPersons.length}");
-    print("Appointments: ${appointments.length}");
-    print("Meetings: ${meetings.length}");
   }
 
   void _cancelAll() {
@@ -109,6 +144,7 @@ class HomeCtrl extends GetxController {
     _todayMtgsStream?.cancel();
     _clockTimer?.cancel();
     _clockTimer = null;
+    patientsCount = 0;
     dataLoaded = false;
   }
 
@@ -118,23 +154,21 @@ class HomeCtrl extends GetxController {
     meetings.clear();
     todayAppointments.clear();
     todayMeetings.clear();
+    patientsCount = 0;
     update();
   }
 
-  // ─── Patients ──────────────────────────────────────────────────────────────
-
-  void getPatients() {
-    _patientsStream?.cancel();
-    _patientsStream = FBFireStore.patients
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen((event) {
-          patients = event.docs
-              .map(PatientModel.fromQueryDocumentSnapshot)
-              .toList();
-          update();
-        }, onError: (e) => debugPrint(e.toString()));
+  void _fetchPatientsCount() async {
+    try {
+      final aggregateQuery = await FBFireStore.patients.count().get();
+      patientsCount = aggregateQuery.count ?? 0;
+      update();
+    } catch (e) {
+      debugPrint('Failed to get patients count: $e');
+    }
   }
+
+  // ─── Patients ──────────────────────────────────────────────────────────────
 
   Future<PatientModel?> createPatient({
     required String name,
@@ -157,6 +191,8 @@ class HomeCtrl extends GetxController {
         'updatedAt': now,
       };
       await ref.set(data);
+      patientsCount++;
+      update();
       return PatientModel.fromJson(data);
     } catch (e) {
       debugPrint(e.toString());

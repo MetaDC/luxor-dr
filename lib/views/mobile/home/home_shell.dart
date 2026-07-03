@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../controllers/home_ctrl.dart';
 import '../../../utils/app_theme.dart';
+import '../update_app_view.dart';
 import 'appointments/appointment_form.dart';
 import 'meetings/meeting_form.dart';
 
@@ -155,14 +158,21 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final idx = _locationIndex(context);
-    return Scaffold(
-      backgroundColor: DrColors.background,
-      body: widget.child,
-      bottomNavigationBar: _FloatingNavBar(
-        activeIndex: idx,
-        onItemTap: (i) => _onNavTap(context, i),
-        onCreateTap: () => _showNewItemSheet(context),
-      ),
+    return GetBuilder<HomeCtrl>(
+      builder: (ctrl) {
+        if (!ctrl.versionSupported) {
+          return const UpdateAppView();
+        }
+        return Scaffold(
+          backgroundColor: DrColors.background,
+          body: widget.child,
+          bottomNavigationBar: _FloatingNavBar(
+            activeIndex: idx,
+            onItemTap: (i) => _onNavTap(context, i),
+            onCreateTap: () => _showNewItemSheet(context),
+          ),
+        );
+      },
     );
   }
 }

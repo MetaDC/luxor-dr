@@ -12,9 +12,14 @@ class _SplashViewState extends State<SplashView> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) context.go('/login');
-    });
+    _checkVersion();
+  }
+
+  Future<void> _checkVersion() async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      context.go('/login');
+    }
   }
 
   @override

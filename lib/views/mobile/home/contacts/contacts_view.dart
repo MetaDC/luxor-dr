@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../utils/firebase.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:luxor_dr/widgets/phone_input_field.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../../../../controllers/home_ctrl.dart';
 import '../../../../models/patient_model.dart';
 import '../../../../utils/app_theme.dart';
@@ -52,20 +56,131 @@ class ContactsView extends StatefulWidget {
 
 class _ContactsViewState extends State<ContactsView> {
   final _searchCtrl = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _query = '';
+
+  final List<StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+  _pageSubs = [];
+  final List<List<PatientModel>> _pages = [];
+  final List<DocumentSnapshot?> _pageBoundaryDocs = [];
+  bool _loading = false;
+  bool _hasMore = true;
+  static const int _pageSize = 20;
 
   @override
   void initState() {
     super.initState();
-    _searchCtrl.addListener(
-      () => setState(() => _query = _searchCtrl.text.trim().toLowerCase()),
-    );
+    _searchCtrl.addListener(_onSearchChanged);
+    _scrollController.addListener(_onScroll);
+    _loadPage(0);
   }
 
   @override
   void dispose() {
+    _cancelAllSubs();
+    _searchCtrl.removeListener(_onSearchChanged);
     _searchCtrl.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final cleanVal = _searchCtrl.text.trim().toLowerCase();
+    if (_query == cleanVal) return;
+    setState(() {
+      _query = cleanVal;
+      _cancelAllSubs();
+      _pages.clear();
+      _pageBoundaryDocs.clear();
+      _hasMore = true;
+    });
+    _loadPage(0);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (!_loading && _hasMore) {
+        _loadPage(_pages.length);
+      }
+    }
+  }
+
+  void _loadPage(int pageIndex) {
+    if (pageIndex < _pages.length) return;
+    if (mounted) setState(() => _loading = true);
+
+    Query<Map<String, dynamic>> query = FBFireStore.patients;
+    if (_query.isEmpty) {
+      query = query.orderBy('lowerName');
+    } else {
+      query = query
+          .where('lowerName', isGreaterThanOrEqualTo: _query)
+          .where('lowerName', isLessThanOrEqualTo: '$_query\uf8ff')
+          .orderBy('lowerName');
+    }
+
+    if (pageIndex > 0 && _pageBoundaryDocs.length >= pageIndex) {
+      final prevDoc = _pageBoundaryDocs[pageIndex - 1];
+      if (prevDoc != null) {
+        query = query.startAfterDocument(prevDoc);
+      }
+    }
+
+    query = query.limit(_pageSize);
+
+    final sub = query.snapshots().listen(
+      (snapshot) {
+        final items = snapshot.docs
+            .map(PatientModel.fromQueryDocumentSnapshot)
+            .toList();
+
+        if (pageIndex < _pages.length) {
+          _pages[pageIndex] = items;
+        } else {
+          _pages.add(items);
+        }
+
+        final boundaryDoc = snapshot.docs.isNotEmpty
+            ? snapshot.docs.last
+            : null;
+        if (pageIndex < _pageBoundaryDocs.length) {
+          _pageBoundaryDocs[pageIndex] = boundaryDoc;
+        } else {
+          _pageBoundaryDocs.add(boundaryDoc);
+        }
+
+        _hasMore = items.length == _pageSize;
+
+        if (mounted) {
+          setState(() {
+            _loading = false;
+          });
+        }
+      },
+      onError: (e) {
+        if (mounted) {
+          setState(() => _loading = false);
+        }
+      },
+    );
+
+    _pageSubs.add(sub);
+  }
+
+  void _cancelAllSubs() {
+    for (final sub in _pageSubs) {
+      sub.cancel();
+    }
+    _pageSubs.clear();
+  }
+
+  List<PatientModel> get _allLoadedPatients {
+    final List<PatientModel> list = [];
+    for (final pageItems in _pages) {
+      list.addAll(pageItems);
+    }
+    return list;
   }
 
   List<ContactEntry> _build(List<PatientModel> patients) => patients
@@ -88,17 +203,8 @@ class _ContactsViewState extends State<ContactsView> {
           builder: (ctrl) {
             // final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
 
-            final patients = ctrl.patients.toList();
-            final all = _build(patients);
-
-            final visible = all.where((c) {
-              final matchSearch =
-                  _query.isEmpty ||
-                  c.name.toLowerCase().contains(_query) ||
-                  c.email.toLowerCase().contains(_query) ||
-                  c.phone.contains(_query);
-              return matchSearch;
-            }).toList()..sort((a, b) => a.name.compareTo(b.name));
+            final allPatients = _allLoadedPatients;
+            final visible = _build(allPatients);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,7 +248,7 @@ class _ContactsViewState extends State<ContactsView> {
                                   ),
                                 ),
                                 Text(
-                                  '${patients.length} contact${patients.length == 1 ? '' : 's'}',
+                                  '${ctrl.patientsCount} contact${ctrl.patientsCount == 1 ? '' : 's'}',
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     color: DrColors.textSecondary,
@@ -300,23 +406,34 @@ class _ContactsViewState extends State<ContactsView> {
 
                 // ── List ────────────────────────────────────────────
                 Expanded(
-                  child: visible.isEmpty
+                  child: visible.isEmpty && !_loading
                       ? _EmptyState(hasSearch: _query.isNotEmpty)
                       : ListView.separated(
+                          controller: _scrollController,
                           padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-                          itemCount: visible.length,
+                          itemCount: visible.length + (_hasMore ? 1 : 0),
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 12),
-                          itemBuilder: (_, i) => _ContactCard(
-                            contact: visible[i],
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ContactDetailView(contact: visible[i]),
+                          itemBuilder: (_, i) {
+                            if (i == visible.length) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Center(
+                                  child: CupertinoActivityIndicator(),
+                                ),
+                              );
+                            }
+                            return _ContactCard(
+                              contact: visible[i],
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ContactDetailView(contact: visible[i]),
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                 ),
               ],
@@ -346,6 +463,17 @@ class _ContactCard extends StatelessWidget {
     final uri = Uri(scheme: 'tel', path: phone);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
+    }
+  }
+
+  Future<void> _openWhatsApp() async {
+    final cleaned = cleanPhoneNumber(contact.phone).replaceAll('+', '');
+    if (cleaned.isEmpty) return;
+    final urlString = 'https://wa.me/$cleaned';
+    try {
+      await launchUrlString(urlString, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Fallback or ignore
     }
   }
 
@@ -411,26 +539,6 @@ class _ContactCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: contact.typeColor.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              contact.typeLabel.toUpperCase(),
-                              style: GoogleFonts.inter(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                color: contact.typeColor,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 6),
@@ -482,25 +590,51 @@ class _ContactCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Direct Call or Chevron
+                // Direct Call / WhatsApp or Chevron
                 if (contact.phone.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      _call();
-                    },
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: DrColors.primary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          _call();
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: DrColors.primary.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.call_rounded,
+                            size: 16,
+                            color: DrColors.primary,
+                          ),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.call_rounded,
-                        size: 16,
-                        color: DrColors.primary,
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          _openWhatsApp();
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF25D366,
+                            ).withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.chat_rounded,
+                            size: 16,
+                            color: Color(0xFF25D366),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   )
                 else
                   Icon(

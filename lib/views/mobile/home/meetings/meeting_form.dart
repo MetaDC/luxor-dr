@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../controllers/auth_ctrl.dart';
@@ -14,11 +13,14 @@ import '../../../../widgets/phone_input_field.dart';
 import '../../../../utils/phone_helper.dart';
 
 const _meetingTypes = [
-  'Business',
-  'Consultation',
-  'Follow up',
-  'Review',
-  'Other',
+  'Meeting',
+  'Call',
+  'Lunch',
+  'Dinner',
+  'Game',
+  'Movie',
+  'Party',
+  'Travel',
 ];
 
 class MeetingFormSheet extends StatefulWidget {
@@ -376,9 +378,6 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
   void _prefill() {
     final m = widget.meeting;
     if (m == null) return;
-    _person = _ctrl.meetingPersons.firstWhereOrNull(
-      (p) => p.docId == m.personId,
-    );
     _meetingType = m.type;
     _date = m.startTime;
     _startTOD = TimeOfDay.fromDateTime(m.startTime);
@@ -386,6 +385,15 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     _titleCtrl.text = m.shortDescription ?? '';
     _descCtrl.text = m.description ?? '';
     _showOnReception = m.showOnReception;
+    if (m.personId.isNotEmpty) {
+      FBFireStore.meetingPersons.doc(m.personId).get().then((snap) {
+        if (snap.exists && mounted) {
+          setState(() {
+            _person = MeetingPersonModel.fromJson(snap.data()!);
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -676,13 +684,15 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
   Widget build(BuildContext context) {
     final isEdit = widget.meeting != null;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      margin: const EdgeInsets.only(top: 60),
-      decoration: const BoxDecoration(
-        color: DrColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Container(
+        margin: const EdgeInsets.only(top: 60),
+        decoration: const BoxDecoration(
+          color: DrColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
@@ -729,16 +739,33 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Person selector
-                    _PersonSelector(
-                      selected: _person,
-                      onChanged: (p) => setState(() => _person = p),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'Show on Reception',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: DrColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'If unchecked, this task will be visible in the doctor\'s app only.',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: DrColors.textSecondary,
+                        ),
+                      ),
+                      value: _showOnReception,
+                      activeColor: DrColors.accent,
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() => _showOnReception = v);
+                        }
+                      },
                     ),
-                    if (_person != null) ...[
-                      const SizedBox(height: 8),
-                      _PersonInfoCard(person: _person!),
-                    ],
                     const SizedBox(height: 16),
+
                     _buildDateChips(),
                     const SizedBox(height: 16),
                     _buildStartTimeChips(),
@@ -799,6 +826,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                         );
                       }).toList(),
                     ),
+
                     const SizedBox(height: 16),
                     AppTextField(
                       label: 'Notes',
@@ -809,31 +837,15 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                       textCapitalization: TextCapitalization.sentences,
                     ),
                     const SizedBox(height: 16),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Show on Reception',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: DrColors.textPrimary,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'If unchecked, this task will be visible in the doctor\'s app only.',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: DrColors.textSecondary,
-                        ),
-                      ),
-                      value: _showOnReception,
-                      activeColor: DrColors.accent,
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() => _showOnReception = v);
-                        }
-                      },
+                    // Person selector
+                    _PersonSelector(
+                      selected: _person,
+                      onChanged: (p) => setState(() => _person = p),
                     ),
+                    if (_person != null) ...[
+                      const SizedBox(height: 8),
+                      _PersonInfoCard(person: _person!),
+                    ],
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
@@ -864,7 +876,8 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -981,7 +994,7 @@ class _PersonSelectorState extends State<_PersonSelector> {
     if (lq.isEmpty) return const [];
     final snap = await FBFireStore.meetingPersons
         .where('lowerName', isGreaterThanOrEqualTo: lq)
-        .where('lowerName', isLessThanOrEqualTo: '$lq')
+        .where('lowerName', isLessThanOrEqualTo: '$lq\uf8ff')
         .limit(10)
         .get();
     final res = snap.docs.map(MeetingPersonModel.fromSnap).toList();
@@ -1306,7 +1319,7 @@ class _QuickCreatePersonDialogState extends State<_QuickCreatePersonDialog> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text('Add Person'),
+                          : const Text('Save'),
                     ),
                   ),
                 ],

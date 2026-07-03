@@ -213,216 +213,164 @@ class PhoneInputField extends StatefulWidget {
   State<PhoneInputField> createState() => _PhoneInputFieldState();
 }
 
+int getMaxDigitsForDialCode(String dialCode) {
+  switch (dialCode) {
+    case '+91': return 10; // India
+    case '+1': return 10;  // US / Canada
+    case '+44': return 10; // UK
+    case '+92': return 10; // Pakistan
+    case '+880': return 10; // Bangladesh
+    case '+86': return 11; // China
+    case '+81': return 10; // Japan
+    case '+7': return 10;  // Russia
+    case '+61': return 9;  // Australia
+    case '+971': return 9; // UAE
+    case '+966': return 9; // Saudi Arabia
+    case '+65': return 8;  // Singapore
+    case '+33': return 9;  // France
+    case '+49': return 10; // Germany
+    case '+39': return 10; // Italy
+    case '+34': return 9;  // Spain
+    case '+60': return 10; // Malaysia
+    case '+90': return 10; // Turkey
+    case '+62': return 10; // Indonesia
+    case '+965': return 8;  // Kuwait
+    case '+974': return 8;  // Qatar
+    case '+968': return 8;  // Oman
+    case '+973': return 8;  // Bahrain
+    default: return 10; // Default to 10
+  }
+}
+
 class _PhoneInputFieldState extends State<PhoneInputField> {
-  final _focusNode = FocusNode();
-  bool _focused = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(
-      () => setState(() => _focused = _focusNode.hasFocus),
-    );
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  CountryCode get _selected => kCountryCodes.firstWhere(
-    (c) => c.dialCode == widget.selectedDialCode,
-    orElse: () => kCountryCodes.first,
-  );
-
   @override
   Widget build(BuildContext context) {
-    return InputDecorator(
-      isFocused: _focused,
-      decoration: InputDecoration(
-        contentPadding: EdgeInsets.zero,
-        filled: true,
-        fillColor: DrColors.surface,
-        border: OutlineInputBorder(
+    final selected = kCountryCodes.firstWhere(
+      (c) => c.dialCode == widget.selectedDialCode,
+      orElse: () => kCountryCodes.first,
+    );
+    final maxDigits = getMaxDigitsForDialCode(widget.selectedDialCode);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Separate Country Dropdown Form Field
+        InkWell(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (ctx) => _SearchCountryDialog(
+                selected: selected,
+                onSelected: (code) {
+                  widget.onDialCodeChanged(code.dialCode);
+                  widget.controller.clear(); // Clear text to prevent mismatching lengths
+                },
+              ),
+            );
+          },
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: DrColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: DrColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: DrColors.primary, width: 1.5),
-        ),
-      ),
-      isEmpty: widget.controller.text.isEmpty && !_focused,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _SearchableDialCodePicker(
-            selected: _selected,
-            onChanged: widget.onDialCodeChanged,
-          ),
-          Container(width: 1, height: 24, color: DrColors.border),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6.0),
-              child: TextFormField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                validator: widget.validator,
-                keyboardType: TextInputType.phone,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: DrColors.textPrimary,
+          child: IgnorePointer(
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'Country Selection *',
+                suffixIcon: const Icon(
+                  Icons.arrow_drop_down_rounded,
+                  size: 24,
+                  color: DrColors.textSecondary,
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Phone number',
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: DrColors.textTertiary,
-                  ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
+                filled: true,
+                fillColor: DrColors.surface,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: DrColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: DrColors.border),
+                ),
+              ),
+              child: Text(
+                '${selected.flag} ${selected.name} (${selected.dialCode})',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  color: DrColors.textPrimary,
                 ),
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A searchable country code picker that opens a styled overlay with a search field.
-class _SearchableDialCodePicker extends StatefulWidget {
-  final CountryCode selected;
-  final ValueChanged<String> onChanged;
-
-  const _SearchableDialCodePicker({
-    required this.selected,
-    required this.onChanged,
-  });
-
-  @override
-  State<_SearchableDialCodePicker> createState() =>
-      _SearchableDialCodePickerState();
-}
-
-class _SearchableDialCodePickerState extends State<_SearchableDialCodePicker> {
-  final _layerLink = LayerLink();
-  OverlayEntry? _overlay;
-  bool _isOpen = false;
-
-  void _openDropdown() {
-    if (_isOpen) {
-      _closeDropdown();
-      return;
-    }
-    _isOpen = true;
-
-    final renderBox = context.findRenderObject() as RenderBox;
-    final size = renderBox.size;
-
-    _overlay = OverlayEntry(
-      builder: (_) => _CountryDropdownOverlay(
-        link: _layerLink,
-        triggerSize: size,
-        selected: widget.selected,
-        onSelected: (code) {
-          widget.onChanged(code.dialCode);
-          _closeDropdown();
-        },
-        onClose: _closeDropdown,
-      ),
-    );
-
-    Overlay.of(context).insert(_overlay!);
-    setState(() {});
-  }
-
-  void _closeDropdown() {
-    _overlay?.remove();
-    _overlay = null;
-    if (mounted) setState(() => _isOpen = false);
-  }
-
-  @override
-  void dispose() {
-    _closeDropdown();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: GestureDetector(
-        onTap: _openDropdown,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(widget.selected.flag, style: const TextStyle(fontSize: 18)),
-              const SizedBox(width: 5),
-              Text(
-                widget.selected.dialCode,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: DrColors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 2),
-              AnimatedRotation(
-                turns: _isOpen ? 0.5 : 0,
-                duration: const Duration(milliseconds: 200),
-                child: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 16,
-                  color: DrColors.textSecondary,
-                ),
-              ),
-            ],
+        ),
+        const SizedBox(height: 12),
+        // 2. Separate Phone Input Field
+        TextFormField(
+          controller: widget.controller,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(maxDigits),
+          ],
+          style: GoogleFonts.inter(
+            fontSize: 15,
+            color: DrColors.textPrimary,
+          ),
+          validator: (val) {
+            if (val == null || val.trim().isEmpty) {
+              return 'Required';
+            }
+            final cleanVal = val.trim();
+            if (cleanVal.length != maxDigits) {
+              return 'Must be exactly $maxDigits digits';
+            }
+            if (widget.validator != null) {
+              return widget.validator!(val);
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            labelText: 'Phone Number *',
+            hintText: 'Enter $maxDigits digits',
+            prefixText: '${widget.selectedDialCode} ',
+            prefixStyle: GoogleFonts.inter(
+              fontSize: 15,
+              color: DrColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+            filled: true,
+            fillColor: DrColors.surface,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: DrColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: DrColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: DrColors.primary, width: 1.5),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _CountryDropdownOverlay extends StatefulWidget {
-  final LayerLink link;
-  final Size triggerSize;
+class _SearchCountryDialog extends StatefulWidget {
   final CountryCode selected;
   final ValueChanged<CountryCode> onSelected;
-  final VoidCallback onClose;
 
-  const _CountryDropdownOverlay({
-    required this.link,
-    required this.triggerSize,
+  const _SearchCountryDialog({
     required this.selected,
     required this.onSelected,
-    required this.onClose,
   });
 
   @override
-  State<_CountryDropdownOverlay> createState() =>
-      _CountryDropdownOverlayState();
+  State<_SearchCountryDialog> createState() => _SearchCountryDialogState();
 }
 
-class _CountryDropdownOverlayState extends State<_CountryDropdownOverlay> {
+class _SearchCountryDialogState extends State<_SearchCountryDialog> {
   final _searchCtrl = TextEditingController();
   List<CountryCode> _filtered = kCountryCodes;
 
@@ -435,12 +383,10 @@ class _CountryDropdownOverlayState extends State<_CountryDropdownOverlay> {
         _filtered = q.isEmpty
             ? kCountryCodes
             : kCountryCodes
-                  .where(
-                    (c) =>
-                        c.name.toLowerCase().contains(q) ||
-                        c.dialCode.contains(q),
-                  )
-                  .toList();
+                .where((c) =>
+                    c.name.toLowerCase().contains(q) ||
+                    c.dialCode.contains(q))
+                .toList();
       });
     });
   }
@@ -453,154 +399,93 @@ class _CountryDropdownOverlayState extends State<_CountryDropdownOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Barrier to close on outside tap
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: widget.onClose,
-            behavior: HitTestBehavior.translucent,
-            child: const SizedBox.expand(),
-          ),
-        ),
-        CompositedTransformFollower(
-          link: widget.link,
-          showWhenUnlinked: false,
-          offset: Offset(0, widget.triggerSize.height + 4),
-          child: Material(
-            elevation: 8,
-            shadowColor: Colors.black26,
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              width: 240,
-              constraints: const BoxConstraints(maxHeight: 300),
-              decoration: BoxDecoration(
-                color: DrColors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: DrColors.border),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Search field
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: TextField(
-                      controller: _searchCtrl,
-                      autofocus: true,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: DrColors.textPrimary,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Search country...',
-                        hintStyle: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: DrColors.textTertiary,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          size: 16,
-                          color: DrColors.textSecondary,
-                        ),
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: DrColors.border),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: DrColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: DrColors.primary,
-                            width: 1.5,
-                          ),
-                        ),
-                        filled: true,
-                        fillColor: DrColors.background,
-                      ),
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Select Country',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: DrColors.textPrimary,
                     ),
                   ),
-                  const Divider(height: 1),
-                  // Country list
-                  Flexible(
-                    child: _filtered.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              'No results found',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: DrColors.textTertiary,
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            itemCount: _filtered.length,
-                            itemBuilder: (_, i) {
-                              final c = _filtered[i];
-                              final isSelected =
-                                  c.dialCode == widget.selected.dialCode &&
-                                  c.name == widget.selected.name;
-                              return InkWell(
-                                onTap: () => widget.onSelected(c),
-                                child: Container(
-                                  color: isSelected
-                                      ? DrColors.primaryLight
-                                      : Colors.transparent,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 9,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        c.flag,
-                                        style: const TextStyle(fontSize: 17),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          c.name,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 13,
-                                            color: DrColors.textPrimary,
-                                            fontWeight: isSelected
-                                                ? FontWeight.w600
-                                                : FontWeight.w400,
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                        c.dialCode,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: DrColors.textSecondary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _searchCtrl,
+              autofocus: true,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: DrColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search country or code...',
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: DrColors.textTertiary,
+                ),
+                prefixIcon: const Icon(Icons.search_rounded),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
-          ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: SizedBox(
+                width: double.maxFinite,
+                height: 300,
+                child: ListView.separated(
+                  itemCount: _filtered.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) {
+                    final item = _filtered[i];
+                    final isSel = item.dialCode == widget.selected.dialCode;
+                    return ListTile(
+                      leading: Text(item.flag, style: const TextStyle(fontSize: 22)),
+                      title: Text(
+                        item.name,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: isSel ? FontWeight.w600 : FontWeight.w500,
+                          color: isSel ? DrColors.primary : DrColors.textPrimary,
+                        ),
+                      ),
+                      trailing: Text(
+                        item.dialCode,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: isSel ? DrColors.primary : DrColors.textSecondary,
+                          fontWeight: isSel ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                      onTap: () {
+                        widget.onSelected(item);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

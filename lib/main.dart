@@ -166,14 +166,18 @@ class _LuxorDrAppState extends State<LuxorDrApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Luxor Doctor',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      routerConfig: router,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: MaterialApp.router(
+        title: 'Luxor Doctor',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        routerConfig: router,
+      ),
     );
   }
 }
+
 // Notification Channels //
 
 const AndroidNotificationDetails androidPlatformChannelSpecifics =
@@ -192,3 +196,4 @@ const DarwinNotificationDetails iOSPlatformChannelSpecifics =
       presentBadge: true,
       presentSound: true,
     );
+

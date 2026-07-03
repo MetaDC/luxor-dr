@@ -376,13 +376,21 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   void _prefill() {
     final a = widget.appointment;
     if (a == null) return;
-    _patient = _ctrl.patients.firstWhereOrNull((p) => p.docId == a.personId);
     _apptType = a.type;
     _date = a.startTime;
     _startTOD = TimeOfDay.fromDateTime(a.startTime);
     _endTOD = TimeOfDay.fromDateTime(a.endTime);
     _titleCtrl.text = a.shortDescription ?? '';
     _descCtrl.text = a.description ?? '';
+    if (a.personId.isNotEmpty) {
+      FBFireStore.patients.doc(a.personId).get().then((snap) {
+        if (snap.exists && mounted) {
+          setState(() {
+            _patient = PatientModel.fromJson(snap.data()!);
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -679,13 +687,15 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   Widget build(BuildContext context) {
     final isEdit = widget.appointment != null;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      margin: const EdgeInsets.only(top: 60),
-      decoration: const BoxDecoration(
-        color: DrColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Container(
+        margin: const EdgeInsets.only(top: 60),
+        decoration: const BoxDecoration(
+          color: DrColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
         children: [
           // Handle + header
           Padding(
@@ -843,7 +853,8 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -961,7 +972,7 @@ class _PatientSelectorState extends State<_PatientSelector> {
     if (lq.isEmpty) return const [];
     final snap = await FBFireStore.patients
         .where('lowerName', isGreaterThanOrEqualTo: lq)
-        .where('lowerName', isLessThanOrEqualTo: '$lq')
+        .where('lowerName', isLessThanOrEqualTo: '$lq\uf8ff')
         .limit(10)
         .get();
     final res = snap.docs.map(PatientModel.fromQueryDocumentSnapshot).toList();

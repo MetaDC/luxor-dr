@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../../../../controllers/home_ctrl.dart';
 import '../../../../models/app_meet_model.dart';
 import '../../../../utils/app_theme.dart';
@@ -11,6 +12,8 @@ import '../../../../utils/phone_helper.dart';
 import '../../../../widgets/app_snackbar.dart';
 import '../appointments/appointment_form.dart';
 import '../meetings/meeting_form.dart';
+import '../contacts/contacts_view.dart';
+import '../contacts/contact_detail_view.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ScheduleView — combined appointments + meetings
@@ -1033,29 +1036,91 @@ class _ScheduleCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: DrColors.border, width: 1.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _navigateToContactDetail(
+                            context,
+                            item.personId,
+                            item.personName,
+                            item.personPhone,
+                            item.personEmail,
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: DrColors.primaryLight,
+                          foregroundColor: DrColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'History',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: DrColors.primary,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  child: Text(
-                    'Close',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: DrColors.textPrimary,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: DrColors.border,
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Close',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: DrColors.textPrimary,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToContactDetail(
+    BuildContext context,
+    String personId,
+    String personName,
+    String personPhone,
+    String personEmail,
+  ) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ContactDetailView(
+          contact: ContactEntry(
+            id: personId,
+            name: personName,
+            email: personEmail,
+            phone: personPhone,
           ),
         ),
       ),

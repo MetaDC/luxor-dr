@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../utils/firebase.dart';
@@ -10,11 +11,19 @@ import '../views/mobile/home/contacts/contacts_view.dart';
 import '../views/mobile/splash_view.dart';
 
 class GoRouterNotifier extends ChangeNotifier {
+  StreamSubscription? _authSub;
+
   GoRouterNotifier() {
-    FBAuth.auth.authStateChanges().listen((_) => notifyListeners());
+    _authSub = FBAuth.auth.authStateChanges().listen((_) => notifyListeners());
   }
 
   bool get isLoggedIn => FBAuth.auth.currentUser != null;
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
 }
 
 GoRouter buildRouter(GoRouterNotifier notifier) {
@@ -36,6 +45,7 @@ GoRouter buildRouter(GoRouterNotifier notifier) {
         pageBuilder: (context, state) =>
             NoTransitionPage(key: state.pageKey, child: const SplashView()),
       ),
+
       GoRoute(
         path: '/login',
         pageBuilder: (context, state) =>
