@@ -696,165 +696,161 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
-        children: [
-          // Handle + header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
-            child: Column(
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: DrColors.border,
-                      borderRadius: BorderRadius.circular(2),
+          children: [
+            // Handle + header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: DrColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text(
-                      isEdit ? 'Edit Appointment' : 'New Appointment',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: DrColors.textPrimary,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(
+                        isEdit ? 'Edit Appointment' : 'New Appointment',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: DrColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded),
-                      color: DrColors.textSecondary,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Type
-
-                    // const SizedBox(height: 16),
-                    // Patient selector
-                    _PatientSelector(
-                      selected: _patient,
-                      onChanged: (p) => setState(() => _patient = p),
-                    ),
-                    if (_patient != null) ...[
-                      const SizedBox(height: 8),
-                      _PatientInfoCard(patient: _patient!),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                        color: DrColors.textSecondary,
+                      ),
                     ],
-                    const SizedBox(height: 16),
-                    _buildDateChips(),
-                    const SizedBox(height: 16),
-                    _buildStartTimeChips(),
-                    const SizedBox(height: 16),
-                    _buildDurationChips(),
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      label: 'Title *',
-                      hint: 'e.g. Annual checkup',
-                      controller: _titleCtrl,
-                      textCapitalization: TextCapitalization.sentences,
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: _apptTypes.map((t) {
-                        final isSelected = _titleCtrl.text.trim() == t;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _titleCtrl.text = t;
-                              _apptType = t;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? DrColors.primary.withValues(alpha: 0.1)
-                                  : DrColors.background,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isSelected
-                                    ? DrColors.primary
-                                    : DrColors.border,
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              t,
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: isSelected
-                                    ? DrColors.primary
-                                    : DrColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      label: 'Notes',
-                      hint: 'Brief notes or reason...',
-                      controller: _descCtrl,
-                      maxLines: 3,
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: _loading ? null : _save,
-                        child: _loading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : Text(
-                                isEdit
-                                    ? 'Update Appointment'
-                                    : 'Create Appointment',
-                              ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Type
+
+                      // const SizedBox(height: 16),
+                      // Patient selector
+                      _PatientSelector(
+                        selected: _patient,
+                        onChanged: (p) => setState(() => _patient = p),
                       ),
-                    ),
-                  ],
+                      if (_patient != null) ...[
+                        const SizedBox(height: 8),
+                        _PatientInfoCard(patient: _patient!),
+                      ],
+                      const SizedBox(height: 16),
+                      _buildDateChips(),
+                      const SizedBox(height: 16),
+                      _buildStartTimeChips(),
+                      const SizedBox(height: 16),
+                      _buildDurationChips(),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Title *',
+                        hint: 'e.g. Annual checkup',
+                        controller: _titleCtrl,
+                        textCapitalization: TextCapitalization.sentences,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _apptTypes.map((t) {
+                          final isSelected = _titleCtrl.text.trim() == t;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _titleCtrl.text = t;
+                                _apptType = t;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? DrColors.primary.withValues(alpha: 0.1)
+                                    : DrColors.background,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? DrColors.primary
+                                      : DrColors.border,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                t,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                  color: isSelected
+                                      ? DrColors.primary
+                                      : DrColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Notes',
+                        hint: 'Brief notes or reason...',
+                        controller: _descCtrl,
+                        maxLines: 3,
+                        textCapitalization: TextCapitalization.sentences,
+                      ),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _save,
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : Text(isEdit ? 'Update' : 'Create'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 
@@ -1310,7 +1306,7 @@ class _QuickCreatePatientDialogState extends State<_QuickCreatePatientDialog> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text('Add Patient'),
+                          : const Text('Add'),
                     ),
                   ),
                 ],

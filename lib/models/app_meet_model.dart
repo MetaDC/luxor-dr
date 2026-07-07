@@ -100,9 +100,9 @@ class AppointmentMeetingModel {
   }
 
   factory AppointmentMeetingModel.fromQueryDocumentSnapshot(
-    QueryDocumentSnapshot<Map<String, dynamic>> snapshot,
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
   ) {
-    final json = snapshot.data();
+    final json = snapshot.data() ?? {};
     return AppointmentMeetingModel(
       docId: snapshot.id,
       doctorId: json['doctorId'] ?? '',

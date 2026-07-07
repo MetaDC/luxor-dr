@@ -877,7 +877,7 @@ class _AppointmentCard extends StatelessWidget {
                   Expanded(
                     child: _ActionButton(
                       icon: Icons.update_rounded,
-                      label: 'Update Status',
+                      label: 'Update',
                       color: appt.status == 'Scheduled'
                           ? DrColors.warning
                           : DrColors.textTertiary,

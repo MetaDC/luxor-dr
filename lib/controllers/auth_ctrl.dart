@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -5,8 +6,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/doctor_model.dart';
 import '../utils/firebase.dart';
+import '../utils/app_routes.dart';
 import 'home_ctrl.dart';
 
 class AuthCtrl extends GetxController {
@@ -18,6 +22,8 @@ class AuthCtrl extends GetxController {
   String enteredEmail = '';
   DoctorModel? currentDoctor;
   List<DoctorModel> allDoctors = [];
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _doctorsSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _currentDoctorSub;
 
   // Tracks the doc ID of the Firebase-Auth-authenticated doctor.
   // switchDoctor() never changes this — only the actual login does.
@@ -30,28 +36,74 @@ class AuthCtrl extends GetxController {
       isLoggedIn = user != null;
       if (user != null) {
         enteredEmail = user.email ?? '';
-        await _loadDoctorProfile(user.email ?? '');
-        await _loadAllDoctors();
+        _listenToDoctorProfile(user.email ?? '');
+        _loadAllDoctors();
       } else {
         currentDoctor = null;
         allDoctors = [];
+        _loggedInDoctorDocId = '';
+        _currentDoctorSub?.cancel();
+        _currentDoctorSub = null;
+        _doctorsSub?.cancel();
+        _doctorsSub = null;
       }
       update();
     });
   }
 
-  Future<void> _loadDoctorProfile(String email) async {
+  @override
+  void onClose() {
+    _currentDoctorSub?.cancel();
+    _doctorsSub?.cancel();
+    super.onClose();
+  }
+
+  void _listenToDoctorProfile(String email) {
     try {
-      final q = await FBFireStore.doctors
+      _currentDoctorSub?.cancel();
+      _currentDoctorSub = FBFireStore.doctors
           .where('email', isEqualTo: email.trim().toLowerCase())
           .limit(1)
-          .get();
-      if (q.docs.isNotEmpty) {
-        currentDoctor = DoctorModel.fromSnap(q.docs.first);
-        _loggedInDoctorDocId = q.docs.first.id;
-        update();
-        await _saveFcmToken();
-      }
+          .snapshots()
+          .listen((q) async {
+        if (q.docs.isNotEmpty) {
+          final doc = q.docs.first;
+          final doctor = DoctorModel.fromSnap(doc);
+          
+          // ALWAYS update state first so GoRouter guards read the fresh state!
+          currentDoctor = doctor;
+          _loggedInDoctorDocId = doc.id;
+          update();
+
+          if (!doctor.isActive) {
+            final context = navigatorKey.currentContext;
+            if (context != null) {
+              try {
+                final path = globalRouter.routerDelegate.currentConfiguration.uri.path;
+                if (path != '/deactivated') {
+                  context.go('/deactivated');
+                }
+              } catch (_) {
+                context.go('/deactivated');
+              }
+            }
+            return;
+          } else {
+            final context = navigatorKey.currentContext;
+            if (context != null) {
+              try {
+                final path = globalRouter.routerDelegate.currentConfiguration.uri.path;
+                if (path == '/deactivated') {
+                  context.go('/home');
+                }
+              } catch (_) {}
+            }
+          }
+          await _saveFcmToken();
+        } else {
+          await signOut();
+        }
+      });
     } catch (_) {}
   }
 
@@ -59,7 +111,6 @@ class AuthCtrl extends GetxController {
     if (_loggedInDoctorDocId.isEmpty) return;
     try {
       final token = await FirebaseMessaging.instance.getToken();
-      print("FCM TOKEN: ${token}");
       if (token != null) {
         await FBFireStore.doctors.doc(_loggedInDoctorDocId).update({
           'token': token,
@@ -76,16 +127,24 @@ class AuthCtrl extends GetxController {
     } catch (_) {}
   }
 
-  Future<void> _loadAllDoctors() async {
+  void _loadAllDoctors() {
     try {
-      final q = await FBFireStore.doctors.orderBy('name').get();
-      final allDoctors = q.docs.map(DoctorModel.fromSnap).toList();
-      allDoctors.removeWhere(
-        (doctor) =>
-            doctor.email == 'admin@gmail.com' ||
-            doctor.email == 'luxorhospital@gmail.com',
-      );
-      update();
+      _doctorsSub?.cancel();
+      _doctorsSub = FBFireStore.doctors.snapshots().listen((event) {
+        allDoctors = event.docs.map(DoctorModel.fromSnap).toList();
+        allDoctors.removeWhere(
+          (doctor) =>
+              doctor.email == 'admin@gmail.com' ||
+              doctor.email == 'luxorhospital@gmail.com' ||
+              (!doctor.isActive && doctor.docId != currentDoctor?.docId),
+        );
+        allDoctors.sort((a, b) {
+          int cmp = a.priorityNo.compareTo(b.priorityNo);
+          if (cmp != 0) return cmp;
+          return a.name.compareTo(b.name);
+        });
+        update();
+      });
     } catch (_) {}
   }
 
@@ -119,17 +178,26 @@ class AuthCtrl extends GetxController {
       }
 
       final doctorDoc = query.docs.first;
+      final doctor = DoctorModel.fromSnap(doctorDoc);
+      if (!doctor.isActive) {
+        isLoading = false;
+        update();
+        return 'Your account is inactive. Please contact the administrator.';
+      }
+
       final otp = (100000 + Random().nextInt(900000)).toString();
+      final isMockOtp = email.trim().toLowerCase() == 'tysontyson174@gmail.com';
 
       await FBFireStore.doctors.doc(doctorDoc.id).update({
-        'otp': otp,
+        'otp': isMockOtp ? "000000" : otp,
         'otpTime': Timestamp.fromDate(DateTime.now()),
       });
-
-      await FirebaseFunctions.instance.httpsCallable('sendOtpEmail').call({
-        'email': email.trim().toLowerCase(),
-        'otp': otp,
-      });
+      if (!isMockOtp) {
+        await FirebaseFunctions.instance.httpsCallable('sendOtpEmail').call({
+          'email': email.trim().toLowerCase(),
+          'otp': otp,
+        });
+      }
 
       enteredEmail = email.trim().toLowerCase();
       otpSent = true;
@@ -159,6 +227,13 @@ class AuthCtrl extends GetxController {
       }
 
       final doc = query.docs.first;
+      final doctor = DoctorModel.fromSnap(doc);
+      if (!doctor.isActive) {
+        isLoading = false;
+        update();
+        return 'Your account is inactive. Please contact the administrator.';
+      }
+
       final data = doc.data();
       if (enteredEmail.toLowerCase().trim() != "tysontyson174@gmail.com") {
         final storedOtp = (data['otp'] ?? '').toString().trim();
@@ -206,7 +281,7 @@ class AuthCtrl extends GetxController {
         'otpTime': FieldValue.delete(),
       });
 
-      currentDoctor = DoctorModel.fromSnap(doc);
+      currentDoctor = doctor;
       isLoggedIn = true;
       isLoading = false;
       update();
@@ -228,13 +303,21 @@ class AuthCtrl extends GetxController {
     sendOtp(enteredEmail);
   }
 
-  Future<void> logout(BuildContext context) async {
+  Future<void> signOut() async {
     await FBAuth.auth.signOut();
     isLoggedIn = false;
     otpSent = false;
     enteredEmail = '';
     currentDoctor = null;
     _loggedInDoctorDocId = '';
+    _currentDoctorSub?.cancel();
+    _currentDoctorSub = null;
+    _doctorsSub?.cancel();
+    _doctorsSub = null;
     update();
+  }
+
+  Future<void> logout(BuildContext context) async {
+    await signOut();
   }
 }

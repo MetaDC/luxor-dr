@@ -541,6 +541,55 @@ class HomeCtrl extends GetxController {
         );
   }
 
+  Future<Map<String, dynamic>> fetchSchedulePage({
+    required String docTypeFilter,
+    required String statusFilter,
+    required DateTime startDateTime,
+    DateTime? endDateTime,
+    required int limit,
+    DocumentSnapshot? startAfterDoc,
+  }) async {
+    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+    try {
+      Query<Map<String, dynamic>> query = FBFireStore.apptAndMeeting
+          .where('doctorId', isEqualTo: doctorId)
+          .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startDateTime));
+
+      if (endDateTime != null) {
+        query = query.where('startTime', isLessThan: Timestamp.fromDate(endDateTime));
+      }
+
+      if (docTypeFilter != 'all') {
+        query = query.where('docType', isEqualTo: docTypeFilter);
+      }
+      if (statusFilter != 'All') {
+        query = query.where('status', isEqualTo: statusFilter);
+      }
+
+      query = query.orderBy('startTime');
+
+      if (startAfterDoc != null) {
+        query = query.startAfterDocument(startAfterDoc);
+      }
+
+      final snap = await query.limit(limit).get();
+      final items = snap.docs
+          .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
+          .toList();
+
+      return {
+        'items': items,
+        'lastDoc': snap.docs.isNotEmpty ? snap.docs.last : null,
+      };
+    } catch (e) {
+      debugPrint(e.toString());
+      return {
+        'items': <AppointmentMeetingModel>[],
+        'lastDoc': null,
+      };
+    }
+  }
+
   // ─── On-demand fetch by date (using .get()) ──────────────────────────────
 
   Future<List<AppointmentMeetingModel>> fetchAppointmentsForDate(

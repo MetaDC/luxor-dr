@@ -11,6 +11,8 @@ class DoctorModel {
   final String token;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isActive;
+  final int priorityNo;
 
   DoctorModel({
     required this.docId,
@@ -23,6 +25,8 @@ class DoctorModel {
     required this.token,
     required this.createdAt,
     required this.updatedAt,
+    this.isActive = true,
+    this.priorityNo = 0,
   });
 
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +41,8 @@ class DoctorModel {
       token: json['token'] ?? '',
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isActive: json['isActive'] ?? true,
+      priorityNo: json['priorityNo'] ?? 0,
     );
   }
 
@@ -55,6 +61,8 @@ class DoctorModel {
       token: json['token'] ?? '',
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isActive: json['isActive'] ?? true,
+      priorityNo: json['priorityNo'] ?? 0,
     );
   }
 
@@ -73,6 +81,8 @@ class DoctorModel {
       token: json['token'] ?? '',
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isActive: json['isActive'] ?? true,
+      priorityNo: json['priorityNo'] ?? 0,
     );
   }
 

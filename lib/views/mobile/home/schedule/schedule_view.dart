@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../controllers/auth_ctrl.dart';
+import '../../../../utils/firebase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,11 +38,13 @@ class _ScheduleViewState extends State<ScheduleView> {
   bool _isRangeMode = false;
   late _TypeFilter _typeFilter;
 
-  StreamSubscription<List<AppointmentMeetingModel>>? _apptSub;
-  StreamSubscription<List<AppointmentMeetingModel>>? _meetingSub;
-  List<AppointmentMeetingModel> _appts = [];
-  List<AppointmentMeetingModel> _meetings = [];
+  final ScrollController _scrollController = ScrollController();
+  DocumentSnapshot? _lastDoc;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  static const int _pageSize = 4;
 
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _realtimeSub;
   List<AppointmentMeetingModel> _fetched = [];
   bool _loading = false;
 
@@ -57,7 +62,15 @@ class _ScheduleViewState extends State<ScheduleView> {
   void initState() {
     super.initState();
     _initFilters();
-    _listenForDate(_selectedDate);
+    _scrollController.addListener(_onScroll);
+    _fetchInitialSchedule();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _fetchNextSchedulePage();
+    }
   }
 
   void _initFilters() {
@@ -77,130 +90,233 @@ class _ScheduleViewState extends State<ScheduleView> {
       setState(() {
         _initFilters();
       });
+      _fetchInitialSchedule();
     }
-  }
-
-  void _cancelSubs() {
-    _apptSub?.cancel();
-    _meetingSub?.cancel();
   }
 
   @override
   void dispose() {
-    _cancelSubs();
+    _scrollController.dispose();
+    _realtimeSub?.cancel();
     super.dispose();
   }
 
-  void _listenForDate(DateTime date) {
-    _cancelSubs();
+  Future<void> _fetchInitialSchedule() async {
+    _realtimeSub?.cancel();
     setState(() {
       _loading = true;
-      _appts = [];
-      _meetings = [];
       _fetched = [];
+      _lastDoc = null;
+      _hasMore = true;
+      _isLoadingMore = false;
     });
 
-    _apptSub = HomeCtrl.to
-        .listenAppointmentsForDate(date)
-        .listen(
-          (appts) {
-            if (!mounted) return;
-            setState(() {
-              _appts = appts;
-              _updateFetched();
-              _loading = false;
-            });
-          },
-          onError: (e) {
-            if (mounted) setState(() => _loading = false);
-          },
-        );
+    final start = _isRangeMode && _dateRange != null
+        ? DateTime(
+            _dateRange!.start.year,
+            _dateRange!.start.month,
+            _dateRange!.start.day,
+          )
+        : DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
 
-    _meetingSub = HomeCtrl.to
-        .listenMeetingsForDate(date)
-        .listen(
-          (meetings) {
-            if (!mounted) return;
-            setState(() {
-              _meetings = meetings;
-              _updateFetched();
-              _loading = false;
-            });
-          },
-          onError: (e) {
-            if (mounted) setState(() => _loading = false);
-          },
-        );
-  }
+    final DateTime? end = _isRangeMode && _dateRange != null
+        ? DateTime(
+            _dateRange!.end.year,
+            _dateRange!.end.month,
+            _dateRange!.end.day,
+          ).add(const Duration(days: 1))
+        : (!_isToday(_selectedDate)
+            ? start.add(const Duration(days: 1))
+            : null);
 
-  void _listenForRange(DateTimeRange range) {
-    _cancelSubs();
+    final res = await HomeCtrl.to.fetchSchedulePage(
+      docTypeFilter: _typeFilter == _TypeFilter.appointments
+          ? 'appointment'
+          : _typeFilter == _TypeFilter.meetings
+          ? 'meeting'
+          : 'all',
+      statusFilter: _statusFilter,
+      startDateTime: start,
+      endDateTime: end,
+      limit: _pageSize,
+    );
+
+    if (!mounted) return;
+
     setState(() {
-      _loading = true;
-      _appts = [];
-      _meetings = [];
-      _fetched = [];
+      _fetched = List<AppointmentMeetingModel>.from(res['items']);
+      _lastDoc = res['lastDoc'] as DocumentSnapshot?;
+      _hasMore = _fetched.length >= _pageSize;
+      _loading = false;
     });
 
-    _apptSub = HomeCtrl.to
-        .listenAppointmentsForRange(range.start, range.end)
-        .listen(
-          (appts) {
-            if (!mounted) return;
-            setState(() {
-              _appts = appts;
-              _updateFetched();
-              _loading = false;
-            });
-          },
-          onError: (e) {
-            if (mounted) setState(() => _loading = false);
-          },
-        );
-
-    _meetingSub = HomeCtrl.to
-        .listenMeetingsForRange(range.start, range.end)
-        .listen(
-          (meetings) {
-            if (!mounted) return;
-            setState(() {
-              _meetings = meetings;
-              _updateFetched();
-              _loading = false;
-            });
-          },
-          onError: (e) {
-            if (mounted) setState(() => _loading = false);
-          },
-        );
+    _startRealtimeListener();
   }
 
-  void _updateFetched() {
-    final all = [..._appts, ..._meetings]
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
-    _fetched = all;
+  Future<void> _fetchNextSchedulePage() async {
+    if (_loading || _isLoadingMore || !_hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    final start = _isRangeMode && _dateRange != null
+        ? DateTime(
+            _dateRange!.start.year,
+            _dateRange!.start.month,
+            _dateRange!.start.day,
+          )
+        : DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+
+    final DateTime? end = _isRangeMode && _dateRange != null
+        ? DateTime(
+            _dateRange!.end.year,
+            _dateRange!.end.month,
+            _dateRange!.end.day,
+          ).add(const Duration(days: 1))
+        : (!_isToday(_selectedDate)
+            ? start.add(const Duration(days: 1))
+            : null);
+
+    final res = await HomeCtrl.to.fetchSchedulePage(
+      docTypeFilter: _typeFilter == _TypeFilter.appointments
+          ? 'appointment'
+          : _typeFilter == _TypeFilter.meetings
+          ? 'meeting'
+          : 'all',
+      statusFilter: _statusFilter,
+      startDateTime: start,
+      endDateTime: end,
+      limit: _pageSize,
+      startAfterDoc: _lastDoc,
+    );
+
+    if (!mounted) return;
+
+    final newItems = List<AppointmentMeetingModel>.from(res['items']);
+    setState(() {
+      for (final item in newItems) {
+        if (!_fetched.any((e) => e.docId == item.docId)) {
+          _fetched.add(item);
+        }
+      }
+      _fetched.sort((a, b) => a.startTime.compareTo(b.startTime));
+      _lastDoc = res['lastDoc'] as DocumentSnapshot?;
+      _hasMore = newItems.length >= _pageSize;
+      _isLoadingMore = false;
+    });
+  }
+
+  void _startRealtimeListener() {
+    _realtimeSub?.cancel();
+    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+    if (doctorId.isEmpty) return;
+
+    _realtimeSub = FBFireStore.apptAndMeeting
+        .where('doctorId', isEqualTo: doctorId)
+        .snapshots()
+        .listen(
+          (snap) {
+            if (!mounted) return;
+
+            setState(() {
+              for (final change in snap.docChanges) {
+                final doc = change.doc;
+                final model = AppointmentMeetingModel.fromQueryDocumentSnapshot(doc);
+
+                final matchesType =
+                    _typeFilter == _TypeFilter.all ||
+                    (_typeFilter == _TypeFilter.appointments &&
+                        model.docType == 'appointment') ||
+                    (_typeFilter == _TypeFilter.meetings &&
+                        model.docType == 'meeting');
+
+                final matchesStatus =
+                    _statusFilter == 'All' || model.status == _statusFilter;
+
+                final bool isWithinCurrentView;
+                if (_isRangeMode && _dateRange != null) {
+                  final start = DateTime(
+                    _dateRange!.start.year,
+                    _dateRange!.start.month,
+                    _dateRange!.start.day,
+                  );
+                  final end = DateTime(
+                    _dateRange!.end.year,
+                    _dateRange!.end.month,
+                    _dateRange!.end.day,
+                    23,
+                    59,
+                    59,
+                    999,
+                  );
+                  isWithinCurrentView =
+                      (model.startTime.isAtSameMomentAs(start) ||
+                          model.startTime.isAfter(start)) &&
+                      (model.startTime.isAtSameMomentAs(end) ||
+                          model.startTime.isBefore(end));
+                } else if (!_isToday(_selectedDate)) {
+                  isWithinCurrentView =
+                      model.startTime.year == _selectedDate.year &&
+                      model.startTime.month == _selectedDate.month &&
+                      model.startTime.day == _selectedDate.day;
+                } else {
+                  final start = DateTime(
+                    _selectedDate.year,
+                    _selectedDate.month,
+                    _selectedDate.day,
+                  );
+                  isWithinCurrentView =
+                      model.startTime.isAtSameMomentAs(start) ||
+                      model.startTime.isAfter(start);
+                }
+
+                final matchesFilters =
+                    matchesType && matchesStatus && isWithinCurrentView;
+
+                if (change.type == DocumentChangeType.removed) {
+                  _fetched.removeWhere((e) => e.docId == doc.id);
+                } else if (change.type == DocumentChangeType.modified) {
+                  final idx = _fetched.indexWhere((e) => e.docId == doc.id);
+                  if (idx != -1) {
+                    if (matchesFilters) {
+                      _fetched[idx] = model;
+                    } else {
+                      _fetched.removeAt(idx);
+                    }
+                  } else if (matchesFilters) {
+                    _fetched.add(model);
+                  }
+                } else if (change.type == DocumentChangeType.added) {
+                  final exists = _fetched.any((e) => e.docId == doc.id);
+                  if (!exists && matchesFilters) {
+                    _fetched.add(model);
+                  }
+                }
+              }
+              _fetched.sort((a, b) => a.startTime.compareTo(b.startTime));
+            });
+          },
+          onError: (e) {
+            debugPrint('Realtime sub error: $e');
+          },
+        );
   }
 
   void _refresh() {
-    if (_isRangeMode && _dateRange != null) {
-      _listenForRange(_dateRange!);
-    } else {
-      _listenForDate(_selectedDate);
-    }
+    _fetchInitialSchedule();
   }
 
-  List<AppointmentMeetingModel> get _filtered => _fetched.where((item) {
-    if (_typeFilter == _TypeFilter.appointments &&
-        item.docType != 'appointment')
-      return false;
-    if (_typeFilter == _TypeFilter.meetings && item.docType != 'meeting') {
-      return false;
-    }
-    if (_statusFilter != 'All' && item.status != _statusFilter) {
-      return false;
-    }
-    return true;
-  }).toList();
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year && date.month == now.month && date.day == now.day;
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  List<AppointmentMeetingModel> get _filtered => _fetched;
 
   Future<void> _pickDateRange() async {
     final range = await showDateRangePicker(
@@ -225,7 +341,7 @@ class _ScheduleViewState extends State<ScheduleView> {
         _dateRange = range;
         _isRangeMode = true;
       });
-      _listenForRange(range);
+      _fetchInitialSchedule();
     }
   }
 
@@ -234,7 +350,7 @@ class _ScheduleViewState extends State<ScheduleView> {
       _dateRange = null;
       _isRangeMode = false;
     });
-    _listenForDate(_selectedDate);
+    _fetchInitialSchedule();
   }
 
   int get _apptCount =>
@@ -367,7 +483,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                           return GestureDetector(
                             onTap: () {
                               setState(() => _selectedDate = d);
-                              _listenForDate(d);
+                              _fetchInitialSchedule();
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -435,7 +551,10 @@ class _ScheduleViewState extends State<ScheduleView> {
                   CupertinoSlidingSegmentedControl<_TypeFilter>(
                     groupValue: _typeFilter,
                     onValueChanged: (v) {
-                      if (v != null) setState(() => _typeFilter = v);
+                      if (v != null) {
+                        setState(() => _typeFilter = v);
+                        _fetchInitialSchedule();
+                      }
                     },
                     padding: const EdgeInsets.all(3),
                     backgroundColor: Colors.white,
@@ -515,7 +634,10 @@ class _ScheduleViewState extends State<ScheduleView> {
                             ? DrColors.error
                             : DrColors.textSecondary;
                         return GestureDetector(
-                          onTap: () => setState(() => _statusFilter = s),
+                          onTap: () {
+                            setState(() => _statusFilter = s);
+                            _fetchInitialSchedule();
+                          },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
                             padding: const EdgeInsets.symmetric(
@@ -568,21 +690,114 @@ class _ScheduleViewState extends State<ScheduleView> {
                       hasFilters:
                           _typeFilter != _TypeFilter.all ||
                           _statusFilter != 'All',
-                      onClearFilters: () => setState(() {
-                        _typeFilter = _TypeFilter.all;
-                        _statusFilter = 'All';
-                      }),
+                      onClearFilters: () {
+                        setState(() {
+                          _typeFilter = _TypeFilter.all;
+                          _statusFilter = 'All';
+                        });
+                        _fetchInitialSchedule();
+                      },
                     )
                   : ListView.separated(
+                      controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-                      itemCount: filtered.length,
+                      itemCount: filtered.length + (_hasMore ? 1 : 0),
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (_, i) =>
-                          _ScheduleCard(item: filtered[i], onRefresh: _refresh),
+                      itemBuilder: (_, i) {
+                        if (i == filtered.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: DrColors.primary,
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                          );
+                        }
+
+                        final item = filtered[i];
+                        final showHeader =
+                            i == 0 ||
+                            !_isSameDay(
+                              item.startTime,
+                              filtered[i - 1].startTime,
+                            );
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (showHeader) _DateHeader(date: item.startTime),
+                            _ScheduleCard(item: item, onRefresh: _refresh),
+                          ],
+                        );
+                      },
                     ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Date Header Separator
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DateHeader extends StatelessWidget {
+  final DateTime date;
+  const _DateHeader({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
+    final isTomorrow =
+        date.year == now.year &&
+        date.month == now.month &&
+        date.day == (now.day + 1);
+
+    String dateStr;
+    if (isToday) {
+      dateStr = "Today — ${DateFormat('EEEE, MMMM d').format(date)}";
+    } else if (isTomorrow ||
+        (date.difference(DateTime(now.year, now.month, now.day)).inDays == 1)) {
+      dateStr = "Tomorrow — ${DateFormat('EEEE, MMMM d').format(date)}";
+    } else {
+      dateStr = DateFormat('EEEE, MMMM d').format(date);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14, bottom: 8),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(color: DrColors.border, thickness: 1)),
+          const SizedBox(width: 8),
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: isToday ? DrColors.primaryLight : DrColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isToday ? DrColors.primary : DrColors.border,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              dateStr,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isToday ? DrColors.primary : DrColors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Expanded(child: Divider(color: DrColors.border, thickness: 1)),
+        ],
       ),
     );
   }
@@ -713,16 +928,30 @@ class _ScheduleCard extends StatelessWidget {
     if ((item.shortDescription ?? '').isNotEmpty) {
       return item.shortDescription!;
     }
-    return item.type.replaceAll('_', ' ').split(' ').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
+    return item.type
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map(
+          (s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '',
+        )
+        .join(' ');
   }
 
   String get _subtitle {
     if (item.personName.isNotEmpty) {
       final sd = item.shortDescription;
-      return (sd != null && sd.isNotEmpty) ? sd : item.type.replaceAll('_', ' ');
+      return (sd != null && sd.isNotEmpty)
+          ? sd
+          : item.type.replaceAll('_', ' ');
     }
     if ((item.shortDescription ?? '').isNotEmpty) {
-      return item.type.replaceAll('_', ' ').split(' ').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
+      return item.type
+          .replaceAll('_', ' ')
+          .split(' ')
+          .map(
+            (s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '',
+          )
+          .join(' ');
     }
     return '';
   }

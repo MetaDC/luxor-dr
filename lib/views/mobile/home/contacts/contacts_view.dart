@@ -34,9 +34,10 @@ class ContactEntry {
   });
 
   String get initials {
-    final parts = name.trim().split(' ');
+    final parts = name.trim().split(' ').where((s) => s.isNotEmpty).toList();
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final trimmed = name.trim();
+    return trimmed.isNotEmpty ? trimmed[0].toUpperCase() : '?';
   }
 
   Color get typeColor => DrColors.primary;

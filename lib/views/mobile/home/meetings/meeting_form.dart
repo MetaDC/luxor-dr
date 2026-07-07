@@ -693,191 +693,189 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
-            child: Column(
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: DrColors.border,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text(
-                      isEdit ? 'Edit Task' : 'New Task',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: DrColors.textPrimary,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: DrColors.border,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close_rounded),
-                      color: DrColors.textSecondary,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Show on Reception',
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(
+                        isEdit ? 'Edit Task' : 'New Task',
                         style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
                           color: DrColors.textPrimary,
                         ),
                       ),
-                      subtitle: Text(
-                        'If unchecked, this task will be visible in the doctor\'s app only.',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: DrColors.textSecondary,
-                        ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded),
+                        color: DrColors.textSecondary,
                       ),
-                      value: _showOnReception,
-                      activeColor: DrColors.accent,
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() => _showOnReception = v);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    _buildDateChips(),
-                    const SizedBox(height: 16),
-                    _buildStartTimeChips(),
-                    const SizedBox(height: 16),
-                    _buildDurationChips(),
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      label: 'Title *',
-                      hint: 'e.g. Staff Weekly Standup',
-                      controller: _titleCtrl,
-                      textCapitalization: TextCapitalization.sentences,
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: _meetingTypes.map((t) {
-                        final isSelected = _titleCtrl.text.trim() == t;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _titleCtrl.text = t;
-                              _meetingType = t;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? DrColors.primary.withValues(alpha: 0.1)
-                                  : DrColors.background,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isSelected
-                                    ? DrColors.primary
-                                    : DrColors.border,
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              t,
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: isSelected
-                                    ? DrColors.primary
-                                    : DrColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-
-                    const SizedBox(height: 16),
-                    AppTextField(
-                      label: 'Notes',
-                      hint: 'Add notes here',
-                      controller: _descCtrl,
-                      maxLines: 3,
-
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const SizedBox(height: 16),
-                    // Person selector
-                    _PersonSelector(
-                      selected: _person,
-                      onChanged: (p) => setState(() => _person = p),
-                    ),
-                    if (_person != null) ...[
-                      const SizedBox(height: 8),
-                      _PersonInfoCard(person: _person!),
                     ],
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: _loading ? null : _save,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: DrColors.accent,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          'Show on Reception',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: DrColors.textPrimary,
+                          ),
                         ),
-                        child: _loading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : Text(
-                                isEdit ? 'Update Meeting' : 'Create Meeting',
-                              ),
+                        subtitle: Text(
+                          'If unchecked, this task will be visible in the doctor\'s app only.',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: DrColors.textSecondary,
+                          ),
+                        ),
+                        value: _showOnReception,
+                        activeColor: DrColors.accent,
+                        onChanged: (v) {
+                          if (v != null) {
+                            setState(() => _showOnReception = v);
+                          }
+                        },
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+
+                      _buildDateChips(),
+                      const SizedBox(height: 16),
+                      _buildStartTimeChips(),
+                      const SizedBox(height: 16),
+                      _buildDurationChips(),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Title *',
+                        hint: 'e.g. Staff Weekly Standup',
+                        controller: _titleCtrl,
+                        textCapitalization: TextCapitalization.sentences,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _meetingTypes.map((t) {
+                          final isSelected = _titleCtrl.text.trim() == t;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _titleCtrl.text = t;
+                                _meetingType = t;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? DrColors.primary.withValues(alpha: 0.1)
+                                    : DrColors.background,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? DrColors.primary
+                                      : DrColors.border,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                t,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                  color: isSelected
+                                      ? DrColors.primary
+                                      : DrColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Notes',
+                        hint: 'Add notes here',
+                        controller: _descCtrl,
+                        maxLines: 3,
+
+                        textCapitalization: TextCapitalization.sentences,
+                      ),
+                      const SizedBox(height: 16),
+                      // Person selector
+                      _PersonSelector(
+                        selected: _person,
+                        onChanged: (p) => setState(() => _person = p),
+                      ),
+                      if (_person != null) ...[
+                        const SizedBox(height: 8),
+                        _PersonInfoCard(person: _person!),
+                      ],
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _save,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: DrColors.accent,
+                          ),
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : Text(isEdit ? 'Update' : 'Create'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 

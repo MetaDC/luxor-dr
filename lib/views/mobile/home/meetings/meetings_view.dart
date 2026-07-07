@@ -778,7 +778,13 @@ class _MeetingCard extends StatelessWidget {
     } else if ((meeting.shortDescription ?? '').isNotEmpty) {
       mainTitle = meeting.shortDescription!;
     } else {
-      mainTitle = meeting.type.replaceAll('_', ' ').split(' ').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
+      mainTitle = meeting.type
+          .replaceAll('_', ' ')
+          .split(' ')
+          .map(
+            (s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '',
+          )
+          .join(' ');
     }
 
     final String? subtitle;
@@ -911,7 +917,7 @@ class _MeetingCard extends StatelessWidget {
                   Expanded(
                     child: _ActionButton(
                       icon: Icons.update_rounded,
-                      label: 'Update Status',
+                      label: 'Update',
                       color: meeting.status == 'Scheduled'
                           ? DrColors.warning
                           : DrColors.textTertiary,
