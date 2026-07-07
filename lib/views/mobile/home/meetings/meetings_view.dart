@@ -531,13 +531,14 @@ class _MeetingCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                _buildDetailRow(
-                  Icons.groups_outlined,
-                  'Meeting Person',
-                  meeting.personName,
-                ),
-                const SizedBox(height: 16),
+                if (meeting.personName.isNotEmpty) ...[
+                  _buildDetailRow(
+                    Icons.groups_outlined,
+                    'Meeting Person',
+                    meeting.personName,
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 _buildDetailRow(
                   Icons.calendar_today_rounded,
                   'Date & Time',
@@ -588,39 +589,41 @@ class _MeetingCard extends StatelessWidget {
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 48,
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _navigateToContactDetail(
-                              context,
-                              meeting.personId,
-                              meeting.personName,
-                              meeting.personPhone,
-                              meeting.personEmail,
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            backgroundColor: DrColors.primaryLight,
-                            foregroundColor: DrColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                    if (meeting.personId.isNotEmpty) ...[
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _navigateToContactDetail(
+                                context,
+                                meeting.personId,
+                                meeting.personName,
+                                meeting.personPhone,
+                                meeting.personEmail,
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              backgroundColor: DrColors.primaryLight,
+                              foregroundColor: DrColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            'History',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: DrColors.primary,
+                            child: Text(
+                              'History',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: DrColors.primary,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 12),
+                    ],
                     Expanded(
                       child: SizedBox(
                         height: 48,
@@ -768,6 +771,27 @@ class _MeetingCard extends StatelessWidget {
     final location = meeting.description ?? '';
     final showActions =
         meeting.status != 'Completed' && meeting.status != 'Cancelled';
+
+    final String mainTitle;
+    if (meeting.personName.isNotEmpty) {
+      mainTitle = meeting.personName;
+    } else if ((meeting.shortDescription ?? '').isNotEmpty) {
+      mainTitle = meeting.shortDescription!;
+    } else {
+      mainTitle = meeting.type.replaceAll('_', ' ').split(' ').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
+    }
+
+    final String? subtitle;
+    if (meeting.personName.isNotEmpty) {
+      subtitle = (meeting.shortDescription ?? '').isNotEmpty
+          ? meeting.shortDescription
+          : meeting.type.replaceAll('_', ' ');
+    } else if ((meeting.shortDescription ?? '').isNotEmpty) {
+      subtitle = meeting.type.replaceAll('_', ' ');
+    } else {
+      subtitle = null;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: DrColors.surface,
@@ -801,30 +825,22 @@ class _MeetingCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          meeting.personName,
+                          mainTitle,
                           style: GoogleFonts.inter(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: DrColors.textPrimary,
                           ),
                         ),
-                        if ((meeting.shortDescription ?? '').isNotEmpty)
+                        if (subtitle != null)
                           Text(
-                            meeting.shortDescription!,
+                            subtitle,
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               color: DrColors.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                          )
-                        else
-                          Text(
-                            meeting.type.replaceAll('_', ' '),
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: DrColors.textSecondary,
-                            ),
                           ),
                         if (location.isNotEmpty) ...[
                           const SizedBox(height: 3),

@@ -242,8 +242,12 @@ class _FullCard extends StatelessWidget {
 
   bool get _isAppt => item.docType == 'appointment';
 
-  String get _title =>
-      _isAppt ? item.personName : (item.shortDescription ?? item.personName);
+  String get _title {
+    if (_isAppt) return item.personName;
+    if (item.personName.isNotEmpty) return item.personName;
+    if ((item.shortDescription ?? '').isNotEmpty) return item.shortDescription!;
+    return item.type.replaceAll('_', ' ').split(' ').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
+  }
 
   String get _detail {
     if (_isAppt) {
@@ -252,8 +256,18 @@ class _FullCard extends StatelessWidget {
           ? sd
           : item.type.replaceAll('_', ' ');
     }
-    final desc = item.description;
-    return (desc != null && desc.isNotEmpty) ? desc : item.personName;
+    if (item.personName.isNotEmpty) {
+      final desc = item.description;
+      if (desc != null && desc.isNotEmpty) return desc;
+      if ((item.shortDescription ?? '').isNotEmpty) {
+        return item.type.replaceAll('_', ' ');
+      }
+      return '';
+    }
+    if ((item.shortDescription ?? '').isNotEmpty) {
+      return item.type.replaceAll('_', ' ');
+    }
+    return '';
   }
 
   @override

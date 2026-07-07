@@ -707,17 +707,24 @@ class _ScheduleCard extends StatelessWidget {
   }
 
   String get _mainTitle {
-    return item.personName;
-    final sd = item.shortDescription;
-    return (sd != null && sd.isNotEmpty) ? sd : item.personName;
+    if (item.personName.isNotEmpty) {
+      return item.personName;
+    }
+    if ((item.shortDescription ?? '').isNotEmpty) {
+      return item.shortDescription!;
+    }
+    return item.type.replaceAll('_', ' ').split(' ').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
   }
 
   String get _subtitle {
-    final sd = item.shortDescription;
-    return (sd != null && sd.isNotEmpty) ? sd : item.type.replaceAll('_', ' ');
-
-    final desc = item.description;
-    return (desc != null && desc.isNotEmpty) ? desc : '';
+    if (item.personName.isNotEmpty) {
+      final sd = item.shortDescription;
+      return (sd != null && sd.isNotEmpty) ? sd : item.type.replaceAll('_', ' ');
+    }
+    if ((item.shortDescription ?? '').isNotEmpty) {
+      return item.type.replaceAll('_', ' ').split(' ').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
+    }
+    return '';
   }
 
   // bool get _subtitleIsLocation =>
@@ -940,7 +947,11 @@ class _ScheduleCard extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 8),
                                     _ActionChip(
-                                      icon: Icons.chat_rounded,
+                                      customIcon: Image.asset(
+                                        'assets/whatsapp.png',
+                                        width: 14,
+                                        height: 14,
+                                      ),
                                       label: 'WhatsApp',
                                       color: const Color(0xFF128C7E),
                                       onTap: () =>
@@ -1038,39 +1049,41 @@ class _ScheduleCard extends StatelessWidget {
               ),
               Row(
                 children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _navigateToContactDetail(
-                            context,
-                            item.personId,
-                            item.personName,
-                            item.personPhone,
-                            item.personEmail,
-                          );
-                        },
-                        style: TextButton.styleFrom(
-                          backgroundColor: DrColors.primaryLight,
-                          foregroundColor: DrColors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  if (item.personId.isNotEmpty) ...[
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _navigateToContactDetail(
+                              context,
+                              item.personId,
+                              item.personName,
+                              item.personPhone,
+                              item.personEmail,
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: DrColors.primaryLight,
+                            foregroundColor: DrColors.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          'History',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: DrColors.primary,
+                          child: Text(
+                            'History',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: DrColors.primary,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
+                    const SizedBox(width: 12),
+                  ],
                   Expanded(
                     child: SizedBox(
                       height: 48,
@@ -1709,13 +1722,15 @@ class _StatusChoiceCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ActionChip extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final Widget? customIcon;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
   const _ActionChip({
-    required this.icon,
+    this.icon,
+    this.customIcon,
     required this.label,
     required this.color,
     required this.onTap,
@@ -1740,7 +1755,7 @@ class _ActionChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: color),
+              customIcon ?? Icon(icon, size: 14, color: color),
               const SizedBox(width: 6),
               Text(
                 label,

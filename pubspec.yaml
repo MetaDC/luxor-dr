@@ -1,7 +1,7 @@
 name: luxor_dr
 description: "Luxor Doctor App"
 publish_to: 'none'
-version: 1.0.0+4
+version: 1.0.0+6
 
 environment:
   sdk: ^3.10.4
@@ -43,3 +43,4 @@ flutter:
 
   assets:
     - assets/luxor_logo.png
+    - assets/whatsapp.png

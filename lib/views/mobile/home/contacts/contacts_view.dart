@@ -627,10 +627,12 @@ class _ContactCard extends StatelessWidget {
                             ).withValues(alpha: 0.08),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.chat_rounded,
-                            size: 16,
-                            color: Color(0xFF25D366),
+                          child: Center(
+                            child: Image.asset(
+                              'assets/whatsapp.png',
+                              width: 18,
+                              height: 18,
+                            ),
                           ),
                         ),
                       ),
