@@ -86,7 +86,8 @@ class HomeCtrl extends GetxController {
         firebaseBuildStr = data['iosbuildNumber']?.toString();
       }
       // Fallback to generic minversion field
-      firebaseBuildStr ??= data['minversion']?.toString() ?? data['minVersion']?.toString();
+      firebaseBuildStr ??=
+          data['minversion']?.toString() ?? data['minVersion']?.toString();
 
       if (firebaseBuildStr == null || firebaseBuildStr.isEmpty) return;
 
@@ -95,7 +96,9 @@ class HomeCtrl extends GetxController {
         final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
         final minBuild = int.tryParse(firebaseBuildStr) ?? 0;
         final supported = currentBuild >= minBuild;
-        debugPrint('Version check — current: $currentBuild, required: $minBuild, supported: $supported');
+        debugPrint(
+          'Version check — current: $currentBuild, required: $minBuild, supported: $supported',
+        );
         if (versionSupported != supported) {
           versionSupported = supported;
           update();
@@ -553,10 +556,16 @@ class HomeCtrl extends GetxController {
     try {
       Query<Map<String, dynamic>> query = FBFireStore.apptAndMeeting
           .where('doctorId', isEqualTo: doctorId)
-          .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startDateTime));
+          .where(
+            'startTime',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startDateTime),
+          );
 
       if (endDateTime != null) {
-        query = query.where('startTime', isLessThan: Timestamp.fromDate(endDateTime));
+        query = query.where(
+          'startTime',
+          isLessThan: Timestamp.fromDate(endDateTime),
+        );
       }
 
       if (docTypeFilter != 'all') {
@@ -583,10 +592,7 @@ class HomeCtrl extends GetxController {
       };
     } catch (e) {
       debugPrint(e.toString());
-      return {
-        'items': <AppointmentMeetingModel>[],
-        'lastDoc': null,
-      };
+      return {'items': <AppointmentMeetingModel>[], 'lastDoc': null};
     }
   }
 
@@ -767,19 +773,19 @@ class HomeCtrl extends GetxController {
   // ─── Up-next: scheduled items starting within the next 60 minutes ──────────
   // Reads from the today stream (midnight–23:59:59), no extra query needed.
 
-  List<AppointmentMeetingModel> get upcomingNextHour {
-    final now = DateTime.now();
-    final cutoff = now.add(const Duration(hours: 1));
-    return [...todayAppointments, ...todayMeetings]
-        .where(
-          (e) =>
-              e.status == 'Scheduled' &&
-              e.endTime.isAfter(now) && // not yet finished
-              e.startTime.isBefore(
-                cutoff,
-              ), // starts within next hour (or already started)
-        )
-        .toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
-  }
+  // List<AppointmentMeetingModel> get upcomingNextHour {
+  //   final now = DateTime.now();
+  //   final cutoff = now.add(const Duration(hours: 1));
+  //   return [...todayAppointments, ...todayMeetings]
+  //       .where(
+  //         (e) =>
+  //             e.status == 'Scheduled' &&
+  //             e.endTime.isAfter(now) && // not yet finished
+  //             e.startTime.isBefore(
+  //               cutoff,
+  //             ), // starts within next hour (or already started)
+  //       )
+  //       .toList()
+  //     ..sort((a, b) => a.startTime.compareTo(b.startTime));
+  // }
 }

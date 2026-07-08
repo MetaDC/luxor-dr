@@ -14,6 +14,7 @@ class ProfileView extends StatelessWidget {
   void _showDoctorPicker(BuildContext context, AuthCtrl auth) {
     showModalBottomSheet(
       context: context,
+      // useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _DoctorPickerSheet(auth: auth),

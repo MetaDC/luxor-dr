@@ -444,6 +444,7 @@ class _AppointmentCard extends StatelessWidget {
   void _openEdit(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      // useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => AppointmentFormSheet(appointment: appt),
@@ -463,6 +464,7 @@ class _AppointmentCard extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
+      // useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _StatusUpdateSheet(
         docId: appt.docId,

@@ -3,36 +3,34 @@ import 'package:google_fonts/google_fonts.dart';
 
 class DrColors {
   // ── Brand palette ──────────────────────────────────────────────────────────
-  // Dark brand gold – used for primary actions, active states, icons
-  // static const Color primary = Color(0xFFD6B67B);
-  static const Color primary = Color.fromARGB(255, 210, 171, 103);
+  // Primary color: Practo Blue
+  static const Color primary = Color(0xFF28328C);
 
-  // Light brand cream – used for tinted backgrounds, chip fills, badges
-  static const Color primaryLight = Color(0xFFF7F1E6);
-  // Deeper gold for pressed states, outlined borders, bold text
-  static const Color primaryDark = Color(0xFFA8854A);
+  // Light blue for tinted backgrounds, chip fills, badges
+  static const Color primaryLight = Color(0xFFEFF0FA);
+  // Deeper dark blue for pressed states, outlined borders, bold text
+  static const Color primaryDark = Color(0xFF1B2260);
 
-  // ── Meeting accent – warm slate, keeps contrast with cream bg ──────────────
-  static const Color accent = Color(0xFF5C6478);
-  static const Color accentLight = Color(0xFFEEEFF3);
+  // ── Meeting accent ─────────────────────────────────────────────────────────
+  // Accent color: Practo Orange
+  static const Color accent = Color(0xFFFFA000);
+  static const Color accentLight = Color(0xFFFFF7E6);
 
   // ── Layout ─────────────────────────────────────────────────────────────────
-  // Page scaffold: warm off-white, very close to primaryLight
-  static const Color background = Color.fromARGB(255, 255, 254, 252);
-  // static const Color background = Color(0xFFF7F1E6);
-  // Card/surface: pure white so cards pop off the warm background
+  // Page scaffold: pure white
+  static const Color background = Color(0xFFFFFFFF);
+  // Card/surface: pure white
   static const Color surface = Color(0xFFFFFFFF);
-  // Borders: slightly warm grey so they blend naturally
-  static const Color border = Color.fromARGB(255, 232, 224, 208);
-  // static const Color border = Color(0xFFE8E0D0);
-  // Thin dividers: very subtle
-  static const Color divider = Color(0xFFF0EAD9);
+  // Borders: very light gray (almost white)
+  static const Color border = Color(0xFFE4E4E7);
+  // Thin dividers: subtle light gray
+  static const Color divider = Color(0xFFF4F4F5);
 
   // ── Text ───────────────────────────────────────────────────────────────────
-  // Dark warm brown instead of cold black
-  static const Color textPrimary = Color(0xFF2C2008);
-  static const Color textSecondary = Color(0xFF6B5B3E);
-  static const Color textTertiary = Color(0xFFA8956E);
+  // High contrast text colors
+  static const Color textPrimary = Color(0xFF18181B);
+  static const Color textSecondary = Color(0xFF52525B);
+  static const Color textTertiary = Color(0xFF8F8F94);
 
   // ── Semantic ───────────────────────────────────────────────────────────────
   static const Color success = Color(0xFF2D7A4F);

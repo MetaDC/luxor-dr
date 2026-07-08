@@ -31,7 +31,7 @@ class HomeView extends StatelessWidget {
       body: SafeArea(
         child: GetBuilder<HomeCtrl>(
           builder: (ctrl) {
-            final upNext = ctrl.upcomingNextHour;
+            // final upNext = ctrl.upcomingNextHour;
             return CustomScrollView(
               slivers: [
                 // ── Date + greeting ────────────────────────────────
@@ -67,12 +67,12 @@ class HomeView extends StatelessWidget {
                   ),
                 ),
 
-                // ── Up Next carousel (full screen width — no side padding) ──
-                SliverToBoxAdapter(child: _UpNextCarousel(items: upNext)),
+                // // ── Up Next carousel (full screen width — no side padding) ──
+                // SliverToBoxAdapter(child: _UpNextCarousel(items: upNext)),
 
                 // ── Today stats + Quick actions ────────────────────
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
                   sliver: SliverToBoxAdapter(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,10 +97,10 @@ class HomeView extends StatelessWidget {
                               child: _StatCard(
                                 icon: Icons.groups_rounded,
                                 color: DrColors.accent,
-                                 count: ctrl.todayMeetingsCount,
-                                 label: 'Tasks',
-                                 onTap: () =>
-                                     context.go('/home/schedule?filter=meeting'),
+                                count: ctrl.todayMeetingsCount,
+                                label: 'Tasks',
+                                onTap: () =>
+                                    context.go('/home/schedule?filter=meeting'),
                               ),
                             ),
                           ],
@@ -246,7 +246,13 @@ class _FullCard extends StatelessWidget {
     if (_isAppt) return item.personName;
     if (item.personName.isNotEmpty) return item.personName;
     if ((item.shortDescription ?? '').isNotEmpty) return item.shortDescription!;
-    return item.type.replaceAll('_', ' ').split(' ').map((s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '').join(' ');
+    return item.type
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map(
+          (s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '',
+        )
+        .join(' ');
   }
 
   String get _detail {
@@ -644,6 +650,7 @@ class _QuickActions extends StatelessWidget {
                 isFirst: true,
                 onTap: () => showModalBottomSheet(
                   context: parentContext,
+                  // useRootNavigator: true,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: (_) => const AppointmentFormSheet(),
@@ -664,6 +671,7 @@ class _QuickActions extends StatelessWidget {
                 isLast: true,
                 onTap: () => showModalBottomSheet(
                   context: parentContext,
+                  // useRootNavigator: true,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: (_) => const MeetingFormSheet(),

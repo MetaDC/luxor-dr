@@ -740,6 +740,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       CheckboxListTile(
+                        tileColor: Colors.transparent,
                         contentPadding: EdgeInsets.zero,
                         title: Text(
                           'Show on Reception',

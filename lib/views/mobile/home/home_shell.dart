@@ -149,6 +149,7 @@ class _HomeShellState extends State<HomeShell> {
   void _showNewItemSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: false,
       builder: (_) => _NewItemSheet(parentContext: context),
@@ -466,6 +467,7 @@ class _NewItemSheet extends StatelessWidget {
                     Navigator.pop(context);
                     showModalBottomSheet(
                       context: parentContext,
+                      useRootNavigator: true,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (_) => const AppointmentFormSheet(),
@@ -482,6 +484,7 @@ class _NewItemSheet extends StatelessWidget {
                     Navigator.pop(context);
                     showModalBottomSheet(
                       context: parentContext,
+                      useRootNavigator: true,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (_) => const MeetingFormSheet(),
