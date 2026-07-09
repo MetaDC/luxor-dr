@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../utils/firebase.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -199,248 +200,161 @@ class _ContactsViewState extends State<ContactsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DrColors.background,
-      body: SafeArea(
-        child: GetBuilder<HomeCtrl>(
-          builder: (ctrl) {
-            // final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+      appBar: AppBar(
+        backgroundColor: DrColors.primary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => context.go('/home'),
+        ),
+        title: Text(
+          'CONTACTS',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontSize: 18,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_rounded, color: Colors.white),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => const _CreateContactDialog(),
+              );
+            },
+          ),
+        ],
+      ),
+      body: GetBuilder<HomeCtrl>(
+        builder: (ctrl) {
+          final allPatients = _allLoadedPatients;
+          final visible = _build(allPatients);
 
-            final allPatients = _allLoadedPatients;
-            final visible = _build(allPatients);
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header ─────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          // GestureDetector(
-                          //   onTap: () => Navigator.pop(context),
-                          //   child: Container(
-                          //     width: 36,
-                          //     height: 36,
-                          //     decoration: BoxDecoration(
-                          //       color: DrColors.surface,
-                          //       borderRadius: BorderRadius.circular(10),
-                          //       border: Border.all(color: DrColors.border),
-                          //     ),
-                          //     child: const Icon(
-                          //       Icons.arrow_back_ios_new_rounded,
-                          //       size: 16,
-                          //       color: DrColors.textPrimary,
-                          //     ),
-                          //   ),
-                          // ),
-                          // const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Contacts',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: DrColors.textPrimary,
-                                  ),
-                                ),
-                                Text(
-                                  '${ctrl.patientsCount} contact${ctrl.patientsCount == 1 ? '' : 's'}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: DrColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 16, 10, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Search ──────────────────────────────────────
+                    SizedBox(
+                      // decoration: BoxDecoration(
+                      //   color: DrColors.surface,
+                      //   borderRadius: BorderRadius.circular(12),
+                      //   border: Border.all(
+                      //     color: DrColors.border,
+                      //     width: 0.5,
+                      //   ),
+                      // ),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: DrColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search by name, email or phone…',
+                          hintStyle: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: DrColors.textTertiary,
                           ),
-                          SizedBox(width: 10),
-                          true
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            color: DrColors.textTertiary,
+                            size: 20,
+                          ),
+                          suffixIcon: _query.isNotEmpty
                               ? GestureDetector(
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) =>
-                                          const _CreateContactDialog(),
-                                    );
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 7,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: DrColors.surface,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: DrColors.border,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          CupertinoIcons.add,
-                                          size: 13,
-                                          color: DrColors.primary,
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          'Add',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: DrColors.primary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  onTap: _searchCtrl.clear,
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    size: 18,
+                                    color: DrColors.textTertiary,
                                   ),
                                 )
-                              : IconButton(
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: DrColors.primary,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) =>
-                                          const _CreateContactDialog(),
-                                    );
-                                  },
-                                  icon: const Icon(
-                                    Icons.add_rounded,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ── Search ──────────────────────────────────────
-                      SizedBox(
-                        // decoration: BoxDecoration(
-                        //   color: DrColors.surface,
-                        //   borderRadius: BorderRadius.circular(12),
-                        //   border: Border.all(
-                        //     color: DrColors.border,
-                        //     width: 0.5,
-                        //   ),
-                        // ),
-                        child: TextField(
-                          controller: _searchCtrl,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: DrColors.textPrimary,
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 0.5,
+                            ),
                           ),
-                          decoration: InputDecoration(
-                            hintText: 'Search by name, email or phone…',
-                            hintStyle: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: DrColors.textTertiary,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 0.5,
                             ),
-                            prefixIcon: const Icon(
-                              Icons.search_rounded,
-                              color: DrColors.textTertiary,
-                              size: 20,
+                          ),
+                          disabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 0.5,
                             ),
-                            suffixIcon: _query.isNotEmpty
-                                ? GestureDetector(
-                                    onTap: _searchCtrl.clear,
-                                    child: const Icon(
-                                      Icons.close_rounded,
-                                      size: 18,
-                                      color: DrColors.textTertiary,
-                                    ),
-                                  )
-                                : null,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: DrColors.border,
-                                width: 0.5,
-                              ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 0.5,
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: DrColors.border,
-                                width: 0.5,
-                              ),
-                            ),
-                            disabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: DrColors.border,
-                                width: 0.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: DrColors.border,
-                                width: 0.5,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                 ),
+              ),
 
-                const SizedBox(height: 8),
+              const SizedBox(height: 8),
 
-                // ── List ────────────────────────────────────────────
-                Expanded(
-                  child: visible.isEmpty && !_loading
-                      ? _EmptyState(hasSearch: _query.isNotEmpty)
-                      : ListView.separated(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-                          itemCount: visible.length + (_hasMore ? 1 : 0),
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (_, i) {
-                            if (i == visible.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: CupertinoActivityIndicator(),
-                                ),
-                              );
-                            }
-                            return _ContactCard(
-                              contact: visible[i],
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      ContactDetailView(contact: visible[i]),
-                                ),
+              // ── List ────────────────────────────────────────────
+              Expanded(
+                child: visible.isEmpty && !_loading
+                    ? _EmptyState(hasSearch: _query.isNotEmpty)
+                    : ListView.separated(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(10, 4, 10, 32),
+                        itemCount: visible.length + (_hasMore ? 1 : 0),
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) {
+                          if (i == visible.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(
+                                child: CupertinoActivityIndicator(),
                               ),
                             );
-                          },
-                        ),
-                ),
-              ],
-            );
-          },
-        ),
+                          }
+                          return _ContactCard(
+                            contact: visible[i],
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ContactDetailView(contact: visible[i]),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

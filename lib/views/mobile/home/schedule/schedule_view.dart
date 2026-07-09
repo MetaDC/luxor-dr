@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:luxor_dr/models/doctor_model.dart';
 import '../../../../controllers/auth_ctrl.dart';
 import '../../../../utils/firebase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
@@ -33,7 +36,6 @@ class ScheduleView extends StatefulWidget {
 
 class _ScheduleViewState extends State<ScheduleView> {
   DateTime _selectedDate = DateTime.now();
-  bool _isDateMode = false;
   String _statusFilter = 'Scheduled';
   late _TypeFilter _typeFilter;
 
@@ -288,92 +290,18 @@ class _ScheduleViewState extends State<ScheduleView> {
 
   List<AppointmentMeetingModel> get _filtered => _fetched;
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+  Future<void> _showVerticalCalendarDialog(BuildContext context) async {
+    final picked = await showDialog<DateTime>(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: DrColors.primary,
-            onPrimary: Colors.white,
-            surface: DrColors.surface,
-            onSurface: DrColors.textPrimary,
-          ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(
-              foregroundColor: DrColors.primary,
-              textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600),
-            ),
-          ),
-          dialogTheme: DialogThemeData(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            backgroundColor: DrColors.surface,
-            surfaceTintColor: Colors.transparent,
-            elevation: 8,
-          ),
-          datePickerTheme: DatePickerThemeData(
-            backgroundColor: DrColors.surface,
-            headerBackgroundColor: DrColors.primaryLight,
-            headerForegroundColor: DrColors.primary,
-            headerHeadlineStyle: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-            headerHelpStyle: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-            dayStyle: GoogleFonts.inter(
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
-            todayBorder: const BorderSide(color: DrColors.primary, width: 1.5),
-            dayShape: WidgetStateProperty.all(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return DrColors.primary;
-              }
-              return null;
-            }),
-            dayForegroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) return Colors.white;
-              return DrColors.textPrimary;
-            }),
-            dayOverlayColor: WidgetStateProperty.all(
-              DrColors.primary.withValues(alpha: 0.1),
-            ),
-          ),
-        ),
-        child: child!,
-      ),
+      builder: (ctx) => VerticalCalendarDialog(initialDate: _selectedDate),
     );
     if (picked != null && mounted) {
       setState(() {
         _selectedDate = picked;
-        _isDateMode = true;
       });
       _fetchInitialSchedule();
     }
   }
-
-  void _clearDate() {
-    setState(() {
-      _selectedDate = DateTime.now();
-      _isDateMode = false;
-    });
-    _fetchInitialSchedule();
-  }
-
-  int get _apptCount =>
-      _fetched.where((e) => e.docType == 'appointment').length;
-  int get _meetCount => _fetched.where((e) => e.docType == 'meeting').length;
 
   @override
   Widget build(BuildContext context) {
@@ -382,375 +310,480 @@ class _ScheduleViewState extends State<ScheduleView> {
 
     return Scaffold(
       backgroundColor: DrColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(
+        backgroundColor: DrColors.primary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => context.go('/home'),
+        ),
+        title: Text(
+          'SCHEDULE',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontSize: 16,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: false,
+        actions: [
+          GestureDetector(
+            onTap: () => _showVerticalCalendarDialog(context),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              margin: EdgeInsets.only(right: !_isToday(_selectedDate) ? 0 : 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Schedule',
-                              style: GoogleFonts.inter(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: DrColors.textPrimary,
-                              ),
-                            ),
-                            Text(
-                              _loading
-                                  ? 'Loading...'
-                                  : _isDateMode
-                                  ? DateFormat(
-                                      'MMMM d, yyyy',
-                                    ).format(_selectedDate)
-                                  : '$_apptCount appt${_apptCount != 1 ? 's' : ''} · $_meetCount task${_meetCount != 1 ? 's' : ''}',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: _isDateMode
-                                    ? DrColors.primary
-                                    : DrColors.textSecondary,
-                                fontWeight: _isDateMode
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
+                  Text(
+                    DateFormat('MMM yy').format(_selectedDate).toUpperCase(),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.arrow_drop_down_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (!_isToday(_selectedDate))
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedDate = DateTime.now();
+                });
+                _fetchInitialSchedule();
+              },
+              child: Text(
+                'TODAY',
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Doctor Selector Dropdown ──────────────────────
+                GetBuilder<AuthCtrl>(
+                  builder: (auth) {
+                    final doctors = auth.allDoctors;
+                    final current = auth.currentDoctor;
+                    if (doctors.length <= 1 ||
+                        current == null ||
+                        !doctors.contains(current)) {
+                      return const SizedBox.shrink();
+                    }
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                      // Date toggle button
-                      GestureDetector(
-                        onTap: _isDateMode ? _clearDate : _pickDate,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _isDateMode
-                                ? DrColors.primary
-                                : DrColors.surface,
-                            borderRadius: BorderRadius.circular(20),
-                            border: _isDateMode
-                                ? null
-                                : Border.all(color: DrColors.border),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _isDateMode
-                                    ? Icons.close_rounded
-                                    : Icons.calendar_month_rounded,
-                                size: 13,
-                                color: _isDateMode
-                                    ? Colors.white
-                                    : DrColors.primary,
+                      decoration: BoxDecoration(
+                        color: DrColors.primaryLight.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: DrColors.border, width: 1.0),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          DropdownButtonHideUnderline(
+                            child: DropdownButton<DoctorModel>(
+                              value: current,
+                              isExpanded: true,
+                              isDense: true,
+                              icon: const Icon(
+                                Icons.arrow_drop_down_rounded,
+                                color: DrColors.primary,
                               ),
-                              const SizedBox(width: 5),
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                color: DrColors.textPrimary,
+                                fontSize: 15,
+                              ),
+                              dropdownColor: DrColors.background,
+                              items: doctors.map((doc) {
+                                return DropdownMenuItem<DoctorModel>(
+                                  value: doc,
+                                  child: Text(
+                                    doc.name,
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w500,
+                                      color: DrColors.textPrimary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newDoc) {
+                                if (newDoc != null && newDoc != current) {
+                                  auth.switchDoctor(newDoc);
+                                  _fetchInitialSchedule();
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                // ── Week Date Strip ──────────────────────────────
+                SizedBox(
+                  height: 50,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: dates.length,
+                    separatorBuilder: (_, si) => const SizedBox(width: 6),
+                    itemBuilder: (_, i) {
+                      final d = dates[i];
+                      final now = DateTime.now();
+                      final isToday =
+                          d.year == now.year &&
+                          d.month == now.month &&
+                          d.day == now.day;
+                      final isSelected =
+                          d.year == _selectedDate.year &&
+                          d.month == _selectedDate.month &&
+                          d.day == _selectedDate.day;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() => _selectedDate = d);
+                          _fetchInitialSchedule();
+                        },
+                        child: Container(
+                          width: 46,
+                          color: Colors.transparent,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
                               Text(
-                                _isDateMode ? 'Clear' : 'Select Date',
+                                DateFormat('EEE').format(d),
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: _isDateMode
-                                      ? Colors.white
-                                      : DrColors.primary,
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? DrColors.textPrimary
+                                      : DrColors.textTertiary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? DrColors.accent
+                                      : Colors.transparent,
+                                  shape: BoxShape.circle,
+                                  border: isToday && !isSelected
+                                      ? Border.all(
+                                          color: DrColors.accent,
+                                          width: 1.5,
+                                        )
+                                      : null,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${d.day}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : isToday
+                                          ? DrColors.accent
+                                          : DrColors.textPrimary,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
+                ),
 
-                  const SizedBox(height: 10),
+                const SizedBox(height: 6),
 
-                  // ── Week Date Strip ──────────────────────────────
-                  SizedBox(
-                    height: 58,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: dates.length,
-                      separatorBuilder: (_, si) => const SizedBox(width: 6),
-                      itemBuilder: (_, i) {
-                        final d = dates[i];
-                        final now = DateTime.now();
-                        final isToday =
-                            d.year == now.year &&
-                            d.month == now.month &&
-                            d.day == now.day;
-                        final isSelected =
-                            d.year == _selectedDate.year &&
-                            d.month == _selectedDate.month &&
-                            d.day == _selectedDate.day;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() => _selectedDate = d);
-                            _fetchInitialSchedule();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 46,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? DrColors.primary
-                                  : DrColors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected
-                                    ? Colors.transparent
-                                    : isToday
-                                    ? DrColors.primary
-                                    : DrColors.border,
-                                width: isToday && !isSelected ? 1.5 : 1,
+                // ── Type filter (segmented) ──────────────────────
+                CupertinoSlidingSegmentedControl<_TypeFilter>(
+                  groupValue: _typeFilter,
+                  onValueChanged: (v) {
+                    if (v != null) {
+                      setState(() => _typeFilter = v);
+                      _fetchInitialSchedule();
+                    }
+                  },
+                  padding: const EdgeInsets.all(3),
+                  backgroundColor: Colors.white,
+                  thumbColor: _typeFilter == _TypeFilter.meetings
+                      ? DrColors.accent.withValues(alpha: 0.7)
+                      : DrColors.primary.withValues(alpha: 0.7),
+
+                  children: {
+                    _TypeFilter.all: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      child: Text(
+                        'All',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _typeFilter == _TypeFilter.all
+                              ? Colors.white
+                              : DrColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    _TypeFilter.appointments: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      child: Text(
+                        'Appointments',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _typeFilter == _TypeFilter.appointments
+                              ? Colors.white
+                              : DrColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    _TypeFilter.meetings: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      child: Text(
+                        'Tasks',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _typeFilter == _TypeFilter.meetings
+                              ? Colors.white
+                              : DrColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  },
+                ),
+
+                const SizedBox(height: 6),
+
+                // ── Status filter chips ──────────────────────────
+                SizedBox(
+                  height: 26,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _statuses.length,
+                    separatorBuilder: (_, si) => const SizedBox(width: 5),
+                    itemBuilder: (_, i) {
+                      final s = _statuses[i];
+                      final active = _statusFilter == s;
+                      final color = s == 'Scheduled'
+                          ? DrColors.primary
+                          : s == 'Completed'
+                          ? DrColors.success
+                          : s == 'Cancelled'
+                          ? DrColors.error
+                          : DrColors.textSecondary;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() => _statusFilter = s);
+                          _fetchInitialSchedule();
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? color.withValues(alpha: 0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: active ? color : DrColors.border,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              s,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: active ? color : DrColors.textSecondary,
                               ),
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  DateFormat('EEE').format(d).toUpperCase(),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected
-                                        ? Colors.white70
-                                        : DrColors.textTertiary,
-                                  ),
-                                ),
-                                const SizedBox(height: 1),
-                                Text(
-                                  '${d.day}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : isToday
-                                        ? DrColors.primary
-                                        : DrColors.textPrimary,
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat('MMM').format(d),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    color: isSelected
-                                        ? Colors.white70
-                                        : DrColors.textTertiary,
-                                  ),
-                                ),
-                              ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // ── List ─────────────────────────────────────────────
+          Expanded(
+            child: _loading
+                ? Center(
+                    child: LoadingAnimationWidget.staggeredDotsWave(
+                      color: DrColors.primary,
+                      size: 32,
+                    ),
+                  )
+                : filtered.isEmpty
+                ? _EmptyState(
+                    hasFilters:
+                        _typeFilter != _TypeFilter.all ||
+                        _statusFilter != 'Scheduled',
+                    onClearFilters: () {
+                      setState(() {
+                        _typeFilter = _TypeFilter.all;
+                        _statusFilter = 'Scheduled';
+                      });
+                      _fetchInitialSchedule();
+                    },
+                  )
+                : ListView.separated(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
+                    itemCount: filtered.length + (_hasMore ? 1 : 0),
+                    separatorBuilder: (_, si) => const Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: DrColors.border,
+                    ),
+                    itemBuilder: (_, i) {
+                      if (i == filtered.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: DrColors.primary,
+                              strokeWidth: 2.5,
                             ),
                           ),
                         );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // ── Type filter (segmented) ──────────────────────
-                  CupertinoSlidingSegmentedControl<_TypeFilter>(
-                    groupValue: _typeFilter,
-                    onValueChanged: (v) {
-                      if (v != null) {
-                        setState(() => _typeFilter = v);
-                        _fetchInitialSchedule();
                       }
-                    },
-                    padding: const EdgeInsets.all(3),
-                    backgroundColor: Colors.white,
-                    thumbColor: _typeFilter == _TypeFilter.meetings
-                        ? DrColors.accent.withValues(alpha: 0.7)
-                        : DrColors.primary.withValues(alpha: 0.7),
 
-                    children: {
-                      _TypeFilter.all: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        child: Text(
-                          'All',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _typeFilter == _TypeFilter.all
-                                ? Colors.white
-                                : DrColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      _TypeFilter.appointments: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        child: Text(
-                          'Appointments',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _typeFilter == _TypeFilter.appointments
-                                ? Colors.white
-                                : DrColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      _TypeFilter.meetings: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        child: Text(
-                          'Tasks',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _typeFilter == _TypeFilter.meetings
-                                ? Colors.white
-                                : DrColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    },
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // ── Status filter chips ──────────────────────────
-                  SizedBox(
-                    height: 26,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _statuses.length,
-                      separatorBuilder: (_, si) => const SizedBox(width: 5),
-                      itemBuilder: (_, i) {
-                        final s = _statuses[i];
-                        final active = _statusFilter == s;
-                        final color = s == 'Scheduled'
-                            ? DrColors.primary
-                            : s == 'Completed'
-                            ? DrColors.success
-                            : s == 'Cancelled'
-                            ? DrColors.error
-                            : DrColors.textSecondary;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() => _statusFilter = s);
-                            _fetchInitialSchedule();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: active
-                                  ? color.withValues(alpha: 0.12)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: active ? color : DrColors.border,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                s,
-                                style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: active
-                                      ? color
-                                      : DrColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── List ─────────────────────────────────────────────
-            Expanded(
-              child: _loading
-                  ? Center(
-                      child: LoadingAnimationWidget.staggeredDotsWave(
-                        color: DrColors.primary,
-                        size: 32,
-                      ),
-                    )
-                  : filtered.isEmpty
-                  ? _EmptyState(
-                      hasFilters:
-                          _typeFilter != _TypeFilter.all ||
-                          _statusFilter != 'Scheduled',
-                      onClearFilters: () {
-                        setState(() {
-                          _typeFilter = _TypeFilter.all;
-                          _statusFilter = 'Scheduled';
-                        });
-                        _fetchInitialSchedule();
-                      },
-                    )
-                  : ListView.separated(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-                      itemCount: filtered.length + (_hasMore ? 1 : 0),
-                      separatorBuilder: (_, si) => const SizedBox(height: 10),
-                      itemBuilder: (_, i) {
-                        if (i == filtered.length) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: DrColors.primary,
-                                strokeWidth: 2.5,
-                              ),
-                            ),
+                      final item = filtered[i];
+                      final showHeader =
+                          i == 0 ||
+                          !_isSameDay(
+                            item.startTime,
+                            filtered[i - 1].startTime,
                           );
-                        }
 
-                        final item = filtered[i];
-                        final showHeader =
-                            i == 0 ||
-                            !_isSameDay(
-                              item.startTime,
-                              filtered[i - 1].startTime,
-                            );
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (showHeader) _DateHeader(date: item.startTime),
-                            _ScheduleCard(item: item, onRefresh: _refresh),
-                          ],
-                        );
-                      },
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (showHeader) _DateHeader(date: item.startTime),
+                          _ScheduleCard(item: item, onRefresh: _refresh),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: DrColors.border, width: 0.5)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MeetingFormSheet(),
+                        fullscreenDialog: true,
+                      ),
+                    ).then((_) => _refresh());
+                  },
+                  child: Text(
+                    'ADD TASK',
+                    style: GoogleFonts.inter(
+                      color: DrColors.accent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
                     ),
-            ),
-          ],
+                  ),
+                ),
+              ),
+              Container(width: 1, height: 24, color: DrColors.border),
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AppointmentFormSheet(),
+                        fullscreenDialog: true,
+                      ),
+                    ).then((_) => _refresh());
+                  },
+                  child: Text(
+                    'ADD APPOINTMENT',
+                    style: GoogleFonts.inter(
+                      color: DrColors.accent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -786,33 +819,51 @@ class _DateHeader extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(top: 14, bottom: 18),
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
       child: Row(
         children: [
-          const Expanded(child: Divider(color: DrColors.border, thickness: 1)),
+          Expanded(
+            child: Divider(
+              color: isToday
+                  ? DrColors.primary.withValues(alpha: 0.3)
+                  : DrColors.border,
+              thickness: 1,
+            ),
+          ),
           const SizedBox(width: 8),
-
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: isToday ? DrColors.primaryLight : DrColors.surface,
-              borderRadius: BorderRadius.circular(8),
+              color: isToday
+                  ? DrColors.primary.withValues(alpha: 0.7)
+                  : DrColors.primaryLight,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isToday ? DrColors.primary : DrColors.border,
-                width: .5,
+                color: isToday
+                    ? DrColors.primary.withValues(alpha: 0.7)
+                    : DrColors.primary.withValues(alpha: 0.3),
+                width: 1.0,
               ),
             ),
             child: Text(
-              dateStr,
+              dateStr.toUpperCase(),
               style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: isToday ? DrColors.primary : DrColors.textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+                color: isToday ? Colors.white : DrColors.primary,
               ),
             ),
           ),
           const SizedBox(width: 8),
-          const Expanded(child: Divider(color: DrColors.border, thickness: 1)),
+          Expanded(
+            child: Divider(
+              color: isToday
+                  ? DrColors.primary.withValues(alpha: 0.3)
+                  : DrColors.border,
+              thickness: 1,
+            ),
+          ),
         ],
       ),
     );
@@ -931,12 +982,6 @@ class _ScheduleCard extends StatelessWidget {
 
   Color get _typeColor => _isAppt ? DrColors.primary : DrColors.accent;
 
-  Color get _accentColor {
-    if (item.status == 'Cancelled') return DrColors.error;
-    if (item.status == 'Completed') return DrColors.success;
-    return _typeColor;
-  }
-
   /*   String get _mainTitle {
     if (item.personName.isNotEmpty) {
       return item.personName;
@@ -962,7 +1007,7 @@ class _ScheduleCard extends StatelessWidget {
     final now = DateTime.now();
     final diff = item.startTime.difference(now);
     if (diff.inMinutes < -15) return 'Passed';
-    if (diff.inMinutes < 0) return 'Just passed';
+    if (diff.inMinutes < 0) return 'Missed';
     final h = diff.inHours;
     if (h == 0) return 'In ${diff.inMinutes}m';
     return 'In ${h}h';
@@ -971,20 +1016,20 @@ class _ScheduleCard extends StatelessWidget {
   Color _statusColor() {
     final label = _statusLabel();
     if (label == 'Passed' || label == 'Cancelled') return DrColors.textTertiary;
-    if (label == 'Just passed') return DrColors.warning;
+    if (label == 'Missed') return DrColors.warning;
     if (label == 'Completed') return DrColors.success;
     return _typeColor;
   }
 
   void _openEdit(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      // useRootNavigator: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _isAppt
-          ? AppointmentFormSheet(appointment: item)
-          : MeetingFormSheet(meeting: item),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _isAppt
+            ? AppointmentFormSheet(appointment: item)
+            : MeetingFormSheet(meeting: item),
+        fullscreenDialog: true,
+      ),
     ).then((_) => onRefresh());
   }
 
@@ -1092,7 +1137,7 @@ class _ScheduleCard extends StatelessWidget {
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  padding: EdgeInsets.fromLTRB(24, 0, 24, 24 + MediaQuery.of(ctx).padding.bottom),
                   children: [
                     _buildTimelineItem(
                       icon: Icons.access_time_filled_rounded,
@@ -1439,201 +1484,154 @@ class _ScheduleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final showActions =
         item.status != 'Completed' && item.status != 'Cancelled';
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Left Column (outside card): Start time and status badge
-        SizedBox(
-          width: 70,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                DateFormat('hh:mm a').format(item.startTime),
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: DrColors.textPrimary,
-                ),
+
+    return InkWell(
+      onTap: () => _showDetailsBottomSheet(context),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left Column: Time and status badge
+            SizedBox(
+              width: 70,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DateFormat('hh:mm a').format(item.startTime),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: DrColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  _StatusBadge(label: _statusLabel(), color: _statusColor()),
+                ],
               ),
-              const SizedBox(height: 4),
-              _StatusBadge(label: _statusLabel(), color: _statusColor()),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Card (InkWell)
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: DrColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: DrColors.border, width: 0.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 6,
-                  offset: const Offset(0, 1),
-                ),
-              ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                onTap: () => _showDetailsBottomSheet(context),
-                borderRadius: BorderRadius.circular(16),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Left accent stripe
-                      Container(width: 4, color: _accentColor),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 10, 0, 10),
-                          child: Row(
-                            children: [
-                              // Name and DocType in Column
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (item.personName.isNotEmpty)
-                                      Text(
-                                        item.personName,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: DrColors.textPrimary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      item.personName.isNotEmpty
-                                          ? item.type.replaceAll('_', ' ')
-                                          : item.shortDescription ??
-                                                item.type.replaceAll('_', ' '),
-                                      style: GoogleFonts.inter(
-                                        fontSize: item.personName.isNotEmpty
-                                            ? 12
-                                            : 14,
-                                        color: item.personName.isNotEmpty
-                                            ? DrColors.textSecondary
-                                            : DrColors.textPrimary,
-                                        fontWeight: item.personName.isNotEmpty
-                                            ? FontWeight.w500
-                                            : FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 7),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: _isAppt
-                                              ? DrColors.primary.withValues(
-                                                  alpha: 0.5,
-                                                )
-                                              : DrColors.accent.withValues(
-                                                  alpha: 0.5,
-                                                ),
-                                        ),
-                                        borderRadius: BorderRadius.circular(5),
-                                      ),
-                                      child: Text(
-                                        _isAppt ? 'Appointment' : 'Task',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: DrColors.textSecondary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // const SizedBox(width: 8),
-                              // Three-dot button at last
-                              if (showActions)
-                                PopupMenuButton<String>(
-                                  icon: const Icon(
-                                    Icons.more_vert_rounded,
-                                    color: DrColors.textSecondary,
-                                    size: 20,
-                                  ),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  onSelected: (val) {
-                                    if (val == 'edit') {
-                                      _openEdit(context);
-                                    } else if (val == 'status') {
-                                      _showStatusMenu(context);
-                                    }
-                                  },
-                                  itemBuilder: (ctx) => [
-                                    PopupMenuItem(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.edit_outlined,
-                                            size: 16,
-                                            color: _typeColor,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Edit',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    PopupMenuItem(
-                                      value: 'status',
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.swap_horiz_rounded,
-                                            size: 16,
-                                            color: item.status == 'Scheduled'
-                                                ? DrColors.warning
-                                                : DrColors.textTertiary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Update Status',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
+            const SizedBox(width: 12),
+            // Middle Column: Patient details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item.personName.isNotEmpty)
+                    Text(
+                      item.personName,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: DrColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.personName.isNotEmpty
+                        ? item.type.replaceAll('_', ' ')
+                        : item.shortDescription ??
+                              item.type.replaceAll('_', ' '),
+                    style: GoogleFonts.inter(
+                      fontSize: item.personName.isNotEmpty ? 12 : 14,
+                      color: item.personName.isNotEmpty
+                          ? DrColors.textSecondary
+                          : DrColors.textPrimary,
+                      fontWeight: item.personName.isNotEmpty
+                          ? FontWeight.w500
+                          : FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: _isAppt
+                            ? DrColors.primary.withValues(alpha: 0.5)
+                            : DrColors.accent.withValues(alpha: 0.5),
+                      ),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      _isAppt ? 'Appointment' : 'Task',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: DrColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Right Column: Popup menu button
+            if (showActions)
+              PopupMenuButton<String>(
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  color: DrColors.textSecondary,
+                  size: 20,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onSelected: (val) {
+                  if (val == 'edit') {
+                    _openEdit(context);
+                  } else if (val == 'status') {
+                    _showStatusMenu(context);
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_outlined, size: 16, color: _typeColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Edit',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                  PopupMenuItem(
+                    value: 'status',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.swap_horiz_rounded,
+                          size: 16,
+                          color: item.status == 'Scheduled'
+                              ? DrColors.warning
+                              : DrColors.textTertiary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Update Status',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -1759,7 +1757,7 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
         //   ),
         // ],
       ),
-      padding: EdgeInsets.fromLTRB(20, 20, 20, bottom + 24),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, bottom + 16 + MediaQuery.of(context).padding.bottom),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2013,6 +2011,368 @@ class _ActionChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custom Vertical Scrolling Calendar Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class VerticalCalendarDialog extends StatefulWidget {
+  final DateTime initialDate;
+  const VerticalCalendarDialog({super.key, required this.initialDate});
+
+  @override
+  State<VerticalCalendarDialog> createState() => _VerticalCalendarDialogState();
+}
+
+class _VerticalCalendarDialogState extends State<VerticalCalendarDialog> {
+  late DateTime _selected;
+  late List<DateTime> _months;
+  late ScrollController _scrollController;
+  bool _isYearPicker = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.initialDate;
+
+    // Generate 24 months (6 months before selected to 17 months after)
+    final base = DateTime(_selected.year, _selected.month, 1);
+    _months = List.generate(24, (i) {
+      final monthIndex = base.month - 6 + i;
+      return DateTime(base.year, monthIndex, 1);
+    });
+
+    final index = _months.indexWhere(
+      (m) => m.year == _selected.year && m.month == _selected.month,
+    );
+    final initialOffset = index != -1 ? index * 260.0 : 0.0;
+    _scrollController = ScrollController(initialScrollOffset: initialOffset);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header Container (Orange Theme)
+          Container(
+            width: double.infinity,
+            color: DrColors.accent,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  DateFormat('EEEE').format(_selected).toUpperCase(),
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  DateFormat('MMM dd').format(_selected).toUpperCase(),
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isYearPicker = !_isYearPicker;
+                    });
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateFormat('yyyy').format(_selected),
+                        style: GoogleFonts.inter(
+                          color: _isYearPicker
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.8),
+                          fontSize: 16,
+                          fontWeight: _isYearPicker
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        _isYearPicker
+                            ? Icons.arrow_drop_up_rounded
+                            : Icons.arrow_drop_down_rounded,
+                        color: Colors.white.withValues(alpha: 0.8),
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Body content
+          Expanded(
+            child: Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _isYearPicker
+                  ? GridView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 2.0,
+                          ),
+                      itemCount: 11, // 2020 - 2030
+                      itemBuilder: (ctx, i) {
+                        final yr = 2020 + i;
+                        final isSelectedYr = yr == _selected.year;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selected = DateTime(
+                                yr,
+                                _selected.month,
+                                _selected.day,
+                              );
+                              _isYearPicker = false;
+
+                              // Regenerate months around the new date
+                              final base = DateTime(
+                                _selected.year,
+                                _selected.month,
+                                1,
+                              );
+                              _months = List.generate(24, (i) {
+                                final monthIndex = base.month - 6 + i;
+                                return DateTime(base.year, monthIndex, 1);
+                              });
+                            });
+
+                            // Jump List to centered selected month
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final idx = _months.indexWhere(
+                                (m) =>
+                                    m.year == _selected.year &&
+                                    m.month == _selected.month,
+                              );
+                              if (idx != -1 && _scrollController.hasClients) {
+                                _scrollController.jumpTo(idx * 260.0);
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isSelectedYr
+                                  ? DrColors.accent
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelectedYr
+                                    ? Colors.transparent
+                                    : DrColors.border,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$yr',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelectedYr
+                                      ? Colors.white
+                                      : DrColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      itemCount: _months.length,
+                      itemExtent: 260.0,
+                      itemBuilder: (context, idx) {
+                        final m = _months[idx];
+                        return _MonthWidget(
+                          monthDate: m,
+                          selectedDate: _selected,
+                          onDayTap: (date) {
+                            setState(() {
+                              _selected = date;
+                            });
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ),
+          // Actions
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(foregroundColor: DrColors.accent),
+                  child: Text(
+                    'CANCEL',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, _selected),
+                  style: TextButton.styleFrom(foregroundColor: DrColors.accent),
+                  child: Text(
+                    'OK',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthWidget extends StatelessWidget {
+  final DateTime monthDate;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDayTap;
+
+  const _MonthWidget({
+    required this.monthDate,
+    required this.selectedDate,
+    required this.onDayTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+    final firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
+    final offset = firstWeekday == 7 ? 0 : firstWeekday;
+
+    final totalItems = daysInMonth + offset;
+
+    const weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Center(
+          child: Text(
+            DateFormat('MMMM yyyy').format(monthDate),
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: DrColors.textPrimary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: weekdayLabels.map((lbl) {
+            return SizedBox(
+              width: 24,
+              child: Text(
+                lbl,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: DrColors.textTertiary,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 6),
+        Expanded(
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 2,
+              crossAxisSpacing: 2,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: totalItems,
+            itemBuilder: (context, index) {
+              if (index < offset) {
+                return const SizedBox.shrink();
+              }
+              final day = index - offset + 1;
+              final dayDate = DateTime(monthDate.year, monthDate.month, day);
+              final isSelected =
+                  dayDate.year == selectedDate.year &&
+                  dayDate.month == selectedDate.month &&
+                  dayDate.day == selectedDate.day;
+
+              return GestureDetector(
+                onTap: () => onDayTap(dayDate),
+                behavior: HitTestBehavior.opaque,
+                child: Center(
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: isSelected ? DrColors.accent : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$day',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : DrColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

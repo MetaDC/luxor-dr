@@ -114,8 +114,11 @@ class _ContactDetailViewState extends State<ContactDetailView> {
     final contact = widget.contact;
     final filtered = _filtered;
     final upcomingCount = _records
-        .where((r) => r.status == 'Scheduled' &&
-            (r.endTime.isAfter(DateTime.now()) || !_isToday))
+        .where(
+          (r) =>
+              r.status == 'Scheduled' &&
+              (r.endTime.isAfter(DateTime.now()) || !_isToday),
+        )
         .length;
     final historyCount = _records.length - upcomingCount;
 
@@ -210,7 +213,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  /*    const SizedBox(width: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -231,7 +234,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
                                         letterSpacing: 0.5,
                                       ),
                                     ),
-                                  ),
+                                  ), */
                                 ],
                               ),
                               if (contact.email.isNotEmpty) ...[
@@ -337,8 +340,9 @@ class _ContactDetailViewState extends State<ContactDetailView> {
                               Text(
                                 _isToday
                                     ? 'Today'
-                                    : DateFormat('MMM d, yyyy')
-                                        .format(_selectedDate),
+                                    : DateFormat(
+                                        'MMM d, yyyy',
+                                      ).format(_selectedDate),
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -361,9 +365,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
                         const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () {
-                            setState(
-                              () => _selectedDate = DateTime.now(),
-                            );
+                            setState(() => _selectedDate = DateTime.now());
                             _load();
                           },
                           child: Container(
@@ -396,7 +398,10 @@ class _ContactDetailViewState extends State<ContactDetailView> {
                           decoration: BoxDecoration(
                             color: DrColors.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: DrColors.border, width: 0.5),
+                            border: Border.all(
+                              color: DrColors.border,
+                              width: 0.5,
+                            ),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.02),
@@ -462,8 +467,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
                       itemCount: filtered.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (_, i) =>
-                          _RecordCard(record: filtered[i]),
+                      itemBuilder: (_, i) => _RecordCard(record: filtered[i]),
                     ),
             ),
           ],
@@ -605,8 +609,11 @@ class _RecordCard extends StatelessWidget {
     final statusColor = _statusColor();
     final themeColor = _isAppt ? DrColors.primary : DrColors.accent;
 
-    final hasSummary = record.status == 'Completed' && (record.summary ?? '').isNotEmpty;
-    final hasCancellation = record.status == 'Cancelled' && (record.cancellationReason ?? '').isNotEmpty;
+    final hasSummary =
+        record.status == 'Completed' && (record.summary ?? '').isNotEmpty;
+    final hasCancellation =
+        record.status == 'Cancelled' &&
+        (record.cancellationReason ?? '').isNotEmpty;
     final showExtraBlock = hasSummary || hasCancellation;
 
     showDialog(
@@ -676,7 +683,9 @@ class _RecordCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              DateFormat('EEEE, MMMM d, yyyy').format(record.startTime),
+                              DateFormat(
+                                'EEEE, MMMM d, yyyy',
+                              ).format(record.startTime),
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -696,7 +705,9 @@ class _RecordCard extends StatelessWidget {
                         ),
                       ),
                       _buildTimelineItem(
-                        icon: _isAppt ? Icons.person_rounded : Icons.groups_rounded,
+                        icon: _isAppt
+                            ? Icons.person_rounded
+                            : Icons.groups_rounded,
                         label: _isAppt ? 'Patient' : 'Meeting Person',
                         themeColor: themeColor,
                         isLast: false,
@@ -718,7 +729,10 @@ class _RecordCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: themeColor.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(100),
@@ -838,11 +852,7 @@ class _RecordCard extends StatelessWidget {
                 color: themeColor.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 18,
-                color: themeColor,
-              ),
+              child: Icon(icon, size: 18, color: themeColor),
             ),
             if (!isLast)
               Container(
@@ -875,8 +885,6 @@ class _RecordCard extends StatelessWidget {
       ],
     );
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -1055,8 +1063,8 @@ class _EmptyRecords extends StatelessWidget {
         : 'No history for this day';
     final subtitle = tab == _RecordTab.upcoming
         ? isToday
-            ? 'No appointments or meetings scheduled for today'
-            : 'Nothing scheduled for this day'
+              ? 'No appointments or meetings scheduled for today'
+              : 'Nothing scheduled for this day'
         : 'No completed or cancelled records on this day';
 
     return Center(

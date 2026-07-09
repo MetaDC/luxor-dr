@@ -12,6 +12,7 @@ import '../../../../widgets/app_snackbar.dart';
 import '../../../../widgets/app_text_field.dart';
 import '../../../../widgets/phone_input_field.dart';
 import '../../../../utils/phone_helper.dart';
+import '../../../../widgets/form_date_time_pickers.dart';
 
 const _apptTypes = [
   'Consultation',
@@ -79,262 +80,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     return list;
   }
 
-  Widget _buildDateChips() {
-    final today = DateTime.now();
-    final tomorrow = today.add(const Duration(days: 1));
-    final dayAfter = today.add(const Duration(days: 2));
 
-    final isToday = _selectedDateOption == 'today';
-    final isTomorrow = _selectedDateOption == 'tomorrow';
-    final isDayAfter = _selectedDateOption == 'day_after';
-    final isCustom = _selectedDateOption == 'custom';
-
-    final options = [
-      {
-        'id': 'today',
-        'label': 'Today',
-        'subtitle': DateFormat('d MMM, EEE').format(today),
-        'active': isToday,
-        'date': today,
-      },
-      {
-        'id': 'tomorrow',
-        'label': 'Tomorrow',
-        'subtitle': DateFormat('d MMM, EEE').format(tomorrow),
-        'active': isTomorrow,
-        'date': tomorrow,
-      },
-      {
-        'id': 'day_after',
-        'label': 'Day After',
-        'subtitle': DateFormat('d MMM, EEE').format(dayAfter),
-        'active': isDayAfter,
-        'date': dayAfter,
-      },
-      {
-        'id': 'custom',
-        'label': 'Custom',
-        'subtitle': (isCustom && _date != null)
-            ? DateFormat('d MMM, EEE').format(_date!)
-            : 'Select',
-        'active': isCustom,
-        'date': _date,
-      },
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _labelText('Date *'),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            for (int i = 0; i < options.length; i++) ...[
-              if (i > 0) const SizedBox(width: 6),
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    final opt = options[i];
-                    if (opt['id'] == 'custom') {
-                      final oldDate = _date;
-                      await _pickDate();
-                      if (_date != oldDate) {
-                        setState(() {
-                          _selectedDateOption = 'custom';
-                        });
-                      }
-                    } else {
-                      setState(() {
-                        _date = opt['date'] as DateTime;
-                        _selectedDateOption = opt['id'] as String;
-                      });
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: options[i]['active'] as bool
-                          ? DrColors.primary
-                          : DrColors.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: options[i]['active'] as bool
-                            ? DrColors.primary
-                            : DrColors.border,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            options[i]['label'] as String,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: options[i]['active'] as bool
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: options[i]['active'] as bool
-                                  ? Colors.white
-                                  : DrColors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            options[i]['subtitle'] as String,
-                            style: GoogleFonts.inter(
-                              fontSize: 9,
-                              fontWeight: options[i]['active'] as bool
-                                  ? FontWeight.w500
-                                  : FontWeight.w400,
-                              color: options[i]['active'] as bool
-                                  ? Colors.white.withOpacity(0.85)
-                                  : DrColors.textSecondary.withOpacity(0.7),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStartTimeChips() {
-    final quickTimes = _getQuickStartTimes();
-
-    String? matchedId;
-    for (int i = 0; i < quickTimes.length; i++) {
-      if (_startTOD != null &&
-          _startTOD!.hour == quickTimes[i].hour &&
-          _startTOD!.minute == quickTimes[i].minute) {
-        matchedId = 'quick_$i';
-      }
-    }
-
-    final isCustom = _startTOD != null && matchedId == null;
-    String customLabel = 'Custom';
-    if (isCustom && _startTOD != null) {
-      customLabel = _startTOD!.format(context);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _labelText('Start Time *'),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            for (int i = 0; i < quickTimes.length; i++) ...[
-              if (i > 0) const SizedBox(width: 6),
-              Expanded(
-                child: Builder(
-                  builder: (context) {
-                    final active = matchedId == 'quick_$i';
-                    final time = quickTimes[i];
-                    return InkWell(
-                      onTap: () {
-                        setState(() {
-                          final oldStart = _startTOD;
-                          _startTOD = time;
-                          if (oldStart != null && _endTOD != null) {
-                            final startM = oldStart.hour * 60 + oldStart.minute;
-                            final endM = _endTOD!.hour * 60 + _endTOD!.minute;
-                            final duration = endM - startM;
-                            final newStartM =
-                                _startTOD!.hour * 60 + _startTOD!.minute;
-                            final newEndM = newStartM + duration;
-                            _endTOD = TimeOfDay(
-                              hour: (newEndM ~/ 60) % 24,
-                              minute: newEndM % 60,
-                            );
-                          }
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: active ? DrColors.primary : DrColors.surface,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: active ? DrColors.primary : DrColors.border,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            time.format(context),
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: active
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: active
-                                  ? Colors.white
-                                  : DrColors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-            const SizedBox(width: 6),
-            Expanded(
-              child: InkWell(
-                onTap: _pickStart,
-                borderRadius: BorderRadius.circular(10),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isCustom ? DrColors.primary : DrColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isCustom ? DrColors.primary : DrColors.border,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      customLabel,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: isCustom
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        color: isCustom ? Colors.white : DrColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   @override
   void initState() {
@@ -401,24 +147,18 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   }
 
   Future<void> _pickDate() async {
-    final d = await showDatePicker(
-      context: context,
-      initialDate: _date ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+    final picked = await Navigator.push<DateTime>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FullScreenDatePicker(initialDate: _date ?? DateTime.now()),
+        fullscreenDialog: true,
+      ),
     );
-    if (d != null && mounted) setState(() => _date = d);
-  }
-
-  String _getFormattedEndTime(int extraMinutes) {
-    if (_startTOD == null) return '';
-    final startMinutes = _startTOD!.hour * 60 + _startTOD!.minute;
-    final endMinutes = startMinutes + extraMinutes;
-    final tempTOD = TimeOfDay(
-      hour: (endMinutes ~/ 60) % 24,
-      minute: endMinutes % 60,
-    );
-    return tempTOD.format(context);
+    if (picked != null && mounted) {
+      setState(() {
+        _date = picked;
+      });
+    }
   }
 
   int? get _selectedDurationMinutes {
@@ -426,55 +166,48 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     final startM = _startTOD!.hour * 60 + _startTOD!.minute;
     final endM = _endTOD!.hour * 60 + _endTOD!.minute;
     final diff = endM - startM;
-    if (diff == 15 || diff == 30 || diff == 60) {
-      return diff;
-    }
-    return null;
+    return diff > 0 ? diff : null;
   }
 
-  void _selectDuration(int minutes) {
-    if (_startTOD == null) {
-      final now = TimeOfDay.now();
-      _startTOD = TimeOfDay(hour: now.hour, minute: now.minute);
-    }
-    final startMinutes = _startTOD!.hour * 60 + _startTOD!.minute;
-    final endMinutes = startMinutes + minutes;
-    setState(() {
-      _endTOD = TimeOfDay(
-        hour: (endMinutes ~/ 60) % 24,
-        minute: endMinutes % 60,
-      );
-    });
+  String _formattedTimeRange() {
+    if (_startTOD == null) return '';
+    final startStr = _startTOD!.format(context);
+    final duration = _selectedDurationMinutes ?? 30;
+    return '$startStr, $duration minutes';
   }
 
-  Future<void> _pickStart() async {
-    final t = await showTimePicker(
-      context: context,
-      initialTime: _startTOD ?? TimeOfDay.now(),
+  Future<void> _pickTimeAndDuration() async {
+    final initialStart = _startTOD ?? const TimeOfDay(hour: 9, minute: 0);
+    int currentDuration = 30;
+    if (_startTOD != null && _endTOD != null) {
+      final startM = _startTOD!.hour * 60 + _startTOD!.minute;
+      final endM = _endTOD!.hour * 60 + _endTOD!.minute;
+      currentDuration = endM - startM;
+      if (currentDuration <= 0) currentDuration = 30;
+    }
+    final picked = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FullScreenTimePicker(
+          initialTime: initialStart,
+          initialDurationMinutes: currentDuration,
+        ),
+        fullscreenDialog: true,
+      ),
     );
-    if (t != null) {
+    if (picked != null && mounted) {
+      final time = picked['time'] as TimeOfDay;
+      final duration = picked['duration'] as int;
+      final startM = time.hour * 60 + time.minute;
+      final endM = startM + duration;
       setState(() {
-        if (_startTOD != null && _endTOD != null) {
-          final startM = _startTOD!.hour * 60 + _startTOD!.minute;
-          final endM = _endTOD!.hour * 60 + _endTOD!.minute;
-          final duration = endM - startM;
-          _startTOD = t;
-          final newStartM = _startTOD!.hour * 60 + _startTOD!.minute;
-          final newEndM = newStartM + duration;
-          _endTOD = TimeOfDay(hour: (newEndM ~/ 60) % 24, minute: newEndM % 60);
-        } else {
-          _startTOD = t;
-        }
+        _startTOD = time;
+        _endTOD = TimeOfDay(
+          hour: (endM ~/ 60) % 24,
+          minute: endM % 60,
+        );
       });
     }
-  }
-
-  Future<void> _pickEnd() async {
-    final t = await showTimePicker(
-      context: context,
-      initialTime: _endTOD ?? _startTOD ?? TimeOfDay.now(),
-    );
-    if (t != null) setState(() => _endTOD = t);
   }
 
   Future<void> _save() async {
@@ -564,282 +297,242 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     }
   }
 
-  Widget _buildDurationChips() {
-    final durations = [
-      {'label': '15 min', 'minutes': 15},
-      {'label': '30 min', 'minutes': 30},
-      {'label': '1 hr', 'minutes': 60},
-    ];
 
-    final currentDuration = _selectedDurationMinutes;
-    final isCustom =
-        _startTOD != null && _endTOD != null && currentDuration == null;
-
-    final options = [
-      for (var d in durations)
-        {
-          'id': 'dur_${d['minutes']}',
-          'label': d['label'] as String,
-          'subtitle': _getFormattedEndTime(d['minutes'] as int),
-          'active': currentDuration == d['minutes'],
-          'minutes': d['minutes'] as int,
-        },
-      {
-        'id': 'custom',
-        'label': 'Custom',
-        'subtitle': (isCustom && _endTOD != null)
-            ? _endTOD!.format(context)
-            : 'Select',
-        'active': isCustom,
-        'minutes': -1,
-      },
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Duration / End Time',
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: DrColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            for (int i = 0; i < options.length; i++) ...[
-              if (i > 0) const SizedBox(width: 6),
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    final opt = options[i];
-                    if (opt['id'] == 'custom') {
-                      _pickEnd();
-                    } else {
-                      _selectDuration(opt['minutes'] as int);
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: options[i]['active'] as bool
-                          ? DrColors.primary
-                          : DrColors.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: options[i]['active'] as bool
-                            ? DrColors.primary
-                            : DrColors.border,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            options[i]['label'] as String,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: options[i]['active'] as bool
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: options[i]['active'] as bool
-                                  ? Colors.white
-                                  : DrColors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            options[i]['subtitle'] as String,
-                            style: GoogleFonts.inter(
-                              fontSize: 9,
-                              fontWeight: options[i]['active'] as bool
-                                  ? FontWeight.w500
-                                  : FontWeight.w400,
-                              color: options[i]['active'] as bool
-                                  ? Colors.white.withOpacity(0.85)
-                                  : DrColors.textSecondary.withOpacity(0.7),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.appointment != null;
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Container(
-        margin: const EdgeInsets.only(top: 60),
-        decoration: const BoxDecoration(
-          color: DrColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    final doctor = AuthCtrl.to.currentDoctor;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1B2260),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        child: Column(
-          children: [
-            // Handle + header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
-              child: Column(
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: DrColors.border,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Text(
-                        isEdit ? 'Edit Appointment' : 'New Appointment',
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: DrColors.textPrimary,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded),
-                        color: DrColors.textSecondary,
-                      ),
-                    ],
-                  ),
-                ],
+        title: Text(
+          isEdit ? 'EDIT APPOINTMENT' : 'ADD APPOINTMENT',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontSize: 16,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: false,
+        actions: [
+          TextButton(
+            onPressed: _loading ? null : _save,
+            child: Text(
+              'SAVE',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                letterSpacing: 0.5,
               ),
             ),
-            const Divider(height: 1),
-            Expanded(
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 24),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Type
-
-                      // const SizedBox(height: 16),
-                      // Patient selector
+                      // Patient Name (via Autocomplete selector)
                       _PatientSelector(
                         selected: _patient,
                         onChanged: (p) => setState(() => _patient = p),
                       ),
-                      if (_patient != null) ...[
-                        const SizedBox(height: 8),
-                        _PatientInfoCard(patient: _patient!),
-                      ],
                       const SizedBox(height: 16),
-                      _buildDateChips(),
-                      const SizedBox(height: 16),
-                      _buildStartTimeChips(),
-                      const SizedBox(height: 16),
-                      _buildDurationChips(),
-                      const SizedBox(height: 16),
-                      AppTextField(
-                        label: 'Title *',
-                        hint: 'e.g. Annual checkup',
-                        controller: _titleCtrl,
-                        textCapitalization: TextCapitalization.sentences,
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'Required' : null,
+
+                      // Mobile Number (Read-only/auto-filled)
+                      TextFormField(
+                        key: ValueKey(_patient?.docId),
+                        readOnly: true,
+                        initialValue: _patient?.phone ?? '',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          color: DrColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Mobile Number',
+                          labelStyle: GoogleFonts.inter(
+                            color: DrColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: _apptTypes.map((t) {
-                          final isSelected = _titleCtrl.text.trim() == t;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _titleCtrl.text = t;
-                                _apptType = t;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? DrColors.primary.withValues(alpha: 0.1)
-                                    : DrColors.background,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? DrColors.primary
-                                      : DrColors.border,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                t,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: isSelected
-                                      ? DrColors.primary
-                                      : DrColors.textSecondary,
-                                ),
-                              ),
+                      const SizedBox(height: 16),
+
+                      // Doctor Name (Read-only)
+                      TextFormField(
+                        readOnly: true,
+                        controller: TextEditingController(text: doctor?.name ?? 'Dr Saumya Nayak'),
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          color: DrColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Doctor Name',
+                          labelStyle: GoogleFonts.inter(
+                            color: DrColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Date Field (Tappable)
+                      GestureDetector(
+                        onTap: _pickDate,
+                        behavior: HitTestBehavior.opaque,
+                        child: IgnorePointer(
+                          child: TextFormField(
+                            controller: TextEditingController(
+                              text: _date != null
+                                  ? DateFormat('dd MMMM, yyyy').format(_date!)
+                                  : '',
                             ),
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              color: DrColors.textPrimary,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: 'Date',
+                              labelStyle: GoogleFonts.inter(
+                                color: DrColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              enabledBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                              ),
+                              focusedBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Time Field (Tappable)
+                      GestureDetector(
+                        onTap: _pickTimeAndDuration,
+                        behavior: HitTestBehavior.opaque,
+                        child: IgnorePointer(
+                          child: TextFormField(
+                            controller: TextEditingController(text: _formattedTimeRange()),
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              color: DrColors.textPrimary,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: 'Time',
+                              labelStyle: GoogleFonts.inter(
+                                color: DrColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              enabledBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                              ),
+                              focusedBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Category Dropdown
+                      DropdownButtonFormField<String>(
+                        value: _apptType,
+                        decoration: InputDecoration(
+                          labelText: 'Category',
+                          labelStyle: GoogleFonts.inter(
+                            color: DrColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                        ),
+                        items: _apptTypes.map((t) {
+                          return DropdownMenuItem<String>(
+                            value: t,
+                            child: Text(t, style: GoogleFonts.inter(fontSize: 14)),
                           );
                         }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _apptType = val;
+                              _titleCtrl.text = val;
+                            });
+                          }
+                        },
                       ),
                       const SizedBox(height: 16),
-                      AppTextField(
-                        label: 'Notes',
-                        hint: 'Brief notes or reason...',
+
+                      // Notes/Procedures
+                      TextFormField(
                         controller: _descCtrl,
-                        maxLines: 3,
+                        maxLines: 2,
                         textCapitalization: TextCapitalization.sentences,
-                      ),
-                      const SizedBox(height: 28),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _loading ? null : _save,
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : Text(isEdit ? 'Update' : 'Create'),
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          color: DrColors.textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Procedures / Notes',
+                          labelStyle: GoogleFonts.inter(
+                            color: DrColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
                         ),
                       ),
                     ],
@@ -847,9 +540,6 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -999,6 +689,7 @@ class _PatientSelectorState extends State<_PatientSelector> {
           children: [
             Expanded(
               child: Autocomplete<PatientModel>(
+                key: ValueKey(_current?.docId),
                 initialValue: TextEditingValue(text: _current?.name ?? ''),
                 displayStringForOption: (p) =>
                     p.docId == '__no_result__' ? '' : p.name,
@@ -1038,14 +729,24 @@ class _PatientSelectorState extends State<_PatientSelector> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Patient *',
-                    hintText: 'Search patient by name...',
-                    prefixIcon: const Icon(
-                      Icons.person_search_outlined,
-                      size: 18,
+                    labelText: 'Patient Name *',
+                    labelStyle: GoogleFonts.inter(
+                      color: DrColors.textSecondary,
+                      fontSize: 13,
                     ),
-                    suffixIcon: _current != null
-                        ? IconButton(
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                    enabledBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                    ),
+                    focusedBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_current != null)
+                          IconButton(
                             icon: const Icon(Icons.close_rounded, size: 16),
                             onPressed: () {
                               ctrl.clear();
@@ -1055,21 +756,21 @@ class _PatientSelectorState extends State<_PatientSelector> {
                               });
                               widget.onChanged(null);
                             },
-                          )
-                        : null,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                          onPressed: _quickCreate,
+                          color: DrColors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.account_circle_rounded,
+                          color: DrColors.textTertiary,
+                          size: 32,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              height: 52,
-              child: OutlinedButton.icon(
-                onPressed: _quickCreate,
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('Add'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
               ),
             ),

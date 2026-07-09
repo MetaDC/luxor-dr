@@ -441,12 +441,12 @@ class _MeetingCard extends StatelessWidget {
   }
 
   void _openEdit(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      // useRootNavigator: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => MeetingFormSheet(meeting: meeting),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MeetingFormSheet(meeting: meeting),
+        fullscreenDialog: true,
+      ),
     ).then((_) => onRefresh());
   }
 
@@ -1089,7 +1089,7 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
         color: DrColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.fromLTRB(20, 20, 20, bottom + 24),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, bottom + 16 + MediaQuery.of(context).padding.bottom),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

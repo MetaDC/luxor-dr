@@ -91,4 +91,14 @@ class DoctorModel {
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     return name.isNotEmpty ? name[0].toUpperCase() : 'DR';
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DoctorModel &&
+          runtimeType == other.runtimeType &&
+          docId == other.docId;
+
+  @override
+  int get hashCode => docId.hashCode;
 }

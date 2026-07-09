@@ -1,4 +1,5 @@
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -41,25 +42,43 @@ class HomeView extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          DateFormat(
-                            'EEEE, MMMM d',
-                          ).format(DateTime.now()).toUpperCase(),
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: DrColors.textTertiary,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${_greeting()} 👋',
-                          style: GoogleFonts.inter(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            color: DrColors.textPrimary,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  DateFormat(
+                                    'EEEE, MMMM d',
+                                  ).format(DateTime.now()).toUpperCase(),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: DrColors.textTertiary,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_greeting()} 👋',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800,
+                                    color: DrColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.account_circle_outlined,
+                                size: 30,
+                                color: DrColors.primary,
+                              ),
+                              onPressed: () => context.go('/home/profile'),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 20),
                       ],
@@ -105,7 +124,9 @@ class HomeView extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
+                        _RaySection(parentContext: context),
+                        const SizedBox(height: 24),
                         _QuickActions(parentContext: context),
                       ],
                     ),
@@ -648,12 +669,12 @@ class _QuickActions extends StatelessWidget {
                 label: 'New Appointment',
                 subtitle: 'Schedule a patient visit',
                 isFirst: true,
-                onTap: () => showModalBottomSheet(
-                  context: parentContext,
-                  // useRootNavigator: true,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => const AppointmentFormSheet(),
+                onTap: () => Navigator.push(
+                  parentContext,
+                  MaterialPageRoute(
+                    builder: (_) => const AppointmentFormSheet(),
+                    fullscreenDialog: true,
+                  ),
                 ),
               ),
               Divider(
@@ -669,12 +690,12 @@ class _QuickActions extends StatelessWidget {
                 label: 'New Task',
                 subtitle: 'Schedule a task or review',
                 isLast: true,
-                onTap: () => showModalBottomSheet(
-                  context: parentContext,
-                  // useRootNavigator: true,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => const MeetingFormSheet(),
+                onTap: () => Navigator.push(
+                  parentContext,
+                  MaterialPageRoute(
+                    builder: (_) => const MeetingFormSheet(),
+                    fullscreenDialog: true,
+                  ),
                 ),
               ),
             ],
@@ -762,6 +783,114 @@ class _ActionRow extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ray Section
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RaySection extends StatelessWidget {
+  final BuildContext parentContext;
+  const _RaySection({required this.parentContext});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Ray',
+          style: GoogleFonts.lora(
+            fontSize: 26,
+            fontWeight: FontWeight.w500,
+            color: const Color(0xFF1B2260),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _RayButton(
+                icon: CupertinoIcons.calendar,
+                // icon: Icons.calendar_month_outlined,
+                label: 'Schedule',
+                onTap: () => context.go('/home/schedule'),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _RayButton(
+                icon: Icons.people_outline_rounded,
+                label: 'Contacts',
+                onTap: () => context.go('/home/contacts'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _RayButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _RayButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        decoration: BoxDecoration(
+          color: DrColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: DrColors.border, width: 0.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 52,
+              height: 30,
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+                // border: Border.all(
+                //   color: DrColors.accent.withValues(alpha: 0.5),
+                //   width: 1.5,
+                // ),
+              ),
+              child: Icon(icon, color: DrColors.accent, size: 30),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: DrColors.textPrimary,
+              ),
+            ),
+          ],
         ),
       ),
     );

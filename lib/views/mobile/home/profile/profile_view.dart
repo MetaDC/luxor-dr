@@ -25,164 +25,144 @@ class ProfileView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DrColors.background,
-      body: SafeArea(
-        child: GetBuilder<AuthCtrl>(
-          builder: (auth) {
-            final doctor = auth.currentDoctor;
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Profile',
-                    style: GoogleFonts.inter(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: DrColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── Doctor card (tappable) ───────────────────────
-                  GestureDetector(
-                    onTap: () => _showDoctorPicker(context, auth),
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: DrColors.primary,
-
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Center(
-                              child: Text(
-                                doctor?.initials ?? 'DR',
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${doctor?.name ?? ''}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                Text(
-                                  doctor?.specialization ?? '',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                if (auth.allDoctors.length > 1) ...[
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.swap_horiz_rounded,
-                                        size: 11,
-                                        color: Colors.white54,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Tap to switch doctor',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11,
-                                          color: Colors.white54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          const Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: Colors.white70,
-                            size: 22,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Menu items ───────────────────────────────────
-                  _MenuItem(
-                    icon: Icons.privacy_tip_outlined,
-                    label: 'Privacy Policy',
-                    subtitle: 'Read our privacy policy',
-                    onTap: () => launchUrlString(
-                      'https://www.luxorhospital.com/privacy-policy.html',
-                      mode: LaunchMode.externalApplication,
-                    ),
-                  ),
-                  _MenuItem(
-                    icon: Icons.description_outlined,
-                    label: 'Terms & Conditions',
-                    subtitle: 'Read our terms of service',
-                    onTap: () => launchUrlString(
-                      'https://www.luxorhospital.com/privacy-policy.html',
-                      mode: LaunchMode.externalApplication,
-                    ),
-                  ),
-                  // const SizedBox(height: 4),
-                  _LogoutMenuItem(auth: auth),
-                  const SizedBox(height: 32),
-                  Center(
-                    child: RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: DrColors.textSecondary,
-                        ),
-                        children: [
-                          const TextSpan(text: 'Developed by '),
-                          TextSpan(
-                            text: 'Diwizon',
-                            style: const TextStyle(
-                              decoration: TextDecoration.underline,
-                              fontWeight: FontWeight.w600,
-                              color: DrColors.primary,
-                            ),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () => launchUrlString(
-                                'https://diwizon.com',
-                                mode: LaunchMode.externalApplication,
-                              ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            );
-          },
+      appBar: AppBar(
+        backgroundColor: DrColors.primary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => context.go('/home'),
         ),
+        title: Text(
+          'PROFILE',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontSize: 18,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: GetBuilder<AuthCtrl>(
+        builder: (auth) {
+          final doctor = auth.currentDoctor;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(10, 16, 10, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Doctor card (tappable) ──────�
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: DrColors.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Text(
+                            doctor?.initials ?? 'DR',
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${doctor?.name ?? ''}',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              doctor?.specialization ?? '',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                //  ),
+                //   ),
+                // ),
+                const SizedBox(height: 20),
+
+                // ── Menu items ───────────────────────────────────
+                _MenuItem(
+                  icon: Icons.privacy_tip_outlined,
+                  label: 'Privacy Policy',
+                  subtitle: 'Read our privacy policy',
+                  onTap: () => launchUrlString(
+                    'https://www.luxorhospital.com/privacy-policy.html',
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+                _MenuItem(
+                  icon: Icons.description_outlined,
+                  label: 'Terms & Conditions',
+                  subtitle: 'Read our terms of service',
+                  onTap: () => launchUrlString(
+                    'https://www.luxorhospital.com/privacy-policy.html',
+                    mode: LaunchMode.externalApplication,
+                  ),
+                ),
+                // const SizedBox(height: 4),
+                _LogoutMenuItem(auth: auth),
+                const SizedBox(height: 32),
+                Center(
+                  child: RichText(
+                    text: TextSpan(
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: DrColors.textSecondary,
+                      ),
+                      children: [
+                        const TextSpan(text: 'Developed by '),
+                        TextSpan(
+                          text: 'Diwizon',
+                          style: const TextStyle(
+                            decoration: TextDecoration.underline,
+                            fontWeight: FontWeight.w600,
+                            color: DrColors.primary,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () => launchUrlString(
+                              'https://diwizon.com',
+                              mode: LaunchMode.externalApplication,
+                            ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -407,7 +387,7 @@ class _DoctorPickerSheet extends StatelessWidget {
         color: DrColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + MediaQuery.of(context).padding.bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

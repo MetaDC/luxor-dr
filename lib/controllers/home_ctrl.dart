@@ -36,9 +36,10 @@ class HomeCtrl extends GetxController {
   List<AppointmentMeetingModel> meetings = [];
 
   // Today-scoped lists — live stream from midnight to 23:59:59
-  List<AppointmentMeetingModel> todayAppointments = [];
-  List<AppointmentMeetingModel> todayMeetings = [];
-
+  // List<AppointmentMeetingModel> todayAppointments = [];
+  // List<AppointmentMeetingModel> todayMeetings = [];
+  int todayAppointmentsCount = 0;
+  int todayMeetingsCount = 0;
   StreamSubscription<User?>? _authSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _patientsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _appointmentsStream;
@@ -155,8 +156,8 @@ class HomeCtrl extends GetxController {
     patients.clear();
     appointments.clear();
     meetings.clear();
-    todayAppointments.clear();
-    todayMeetings.clear();
+    // todayAppointments.clear();
+    // todayMeetings.clear();
     patientsCount = 0;
     update();
   }
@@ -234,7 +235,7 @@ class HomeCtrl extends GetxController {
   }
 
   // ─── Appointments ──────────────────────────────────────────────────────────
-
+  /* 
   void getAppointments(String doctorId) {
     _appointmentsStream?.cancel();
     _appointmentsStream = FBFireStore.apptAndMeeting
@@ -249,7 +250,7 @@ class HomeCtrl extends GetxController {
           print("Ain Ctrl Apointments= ${appointments.length}");
           update();
         }, onError: (e) => debugPrint(e.toString()));
-  }
+  } */
 
   Future<bool> createAppointment(AppointmentMeetingModel appt) async {
     try {
@@ -313,7 +314,7 @@ class HomeCtrl extends GetxController {
   }
 
   // ─── Meetings ──────────────────────────────────────────────────────────────
-
+  /* 
   void getMeetings(String doctorId) {
     _meetingsStream?.cancel();
     _meetingsStream = FBFireStore.apptAndMeeting
@@ -327,7 +328,7 @@ class HomeCtrl extends GetxController {
               .toList();
           update();
         }, onError: (e) => debugPrint(e.toString()));
-  }
+  } */
 
   Future<bool> createMeeting(AppointmentMeetingModel meeting) async {
     try {
@@ -385,8 +386,8 @@ class HomeCtrl extends GetxController {
     patients.clear();
     appointments.clear();
     meetings.clear();
-    todayAppointments.clear();
-    todayMeetings.clear();
+    // todayAppointments.clear();
+    // todayMeetings.clear();
     dataLoaded = false;
     update();
     _launchStreams(doctorId);
@@ -407,9 +408,7 @@ class HomeCtrl extends GetxController {
         .orderBy('startTime')
         .snapshots()
         .listen((event) {
-          todayAppointments = event.docs
-              .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
-              .toList();
+          todayAppointmentsCount = event.docs.length;
           update();
         }, onError: (e) => debugPrint(e.toString()));
   }
@@ -427,9 +426,7 @@ class HomeCtrl extends GetxController {
         .orderBy('startTime')
         .snapshots()
         .listen((event) {
-          todayMeetings = event.docs
-              .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
-              .toList();
+          todayMeetingsCount = event.docs.length;
           update();
         }, onError: (e) => debugPrint(e.toString()));
   }
@@ -456,7 +453,7 @@ class HomeCtrl extends GetxController {
 
   // ─── Real-time listen by date/range ──────────────────────────────────────
 
-  Stream<List<AppointmentMeetingModel>> listenAppointmentsForDate(
+  /*   Stream<List<AppointmentMeetingModel>> listenAppointmentsForDate(
     DateTime date,
   ) {
     final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
@@ -474,9 +471,9 @@ class HomeCtrl extends GetxController {
               .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
               .toList(),
         );
-  }
+  } */
 
-  Stream<List<AppointmentMeetingModel>> listenMeetingsForDate(DateTime date) {
+  /*   Stream<List<AppointmentMeetingModel>> listenMeetingsForDate(DateTime date) {
     final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
@@ -492,9 +489,9 @@ class HomeCtrl extends GetxController {
               .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
               .toList(),
         );
-  }
+  } */
 
-  Stream<List<AppointmentMeetingModel>> listenAppointmentsForRange(
+  /*  Stream<List<AppointmentMeetingModel>> listenAppointmentsForRange(
     DateTime from,
     DateTime to,
   ) {
@@ -517,9 +514,9 @@ class HomeCtrl extends GetxController {
               .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
               .toList(),
         );
-  }
+  } */
 
-  Stream<List<AppointmentMeetingModel>> listenMeetingsForRange(
+  /*  Stream<List<AppointmentMeetingModel>> listenMeetingsForRange(
     DateTime from,
     DateTime to,
   ) {
@@ -542,7 +539,7 @@ class HomeCtrl extends GetxController {
               .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
               .toList(),
         );
-  }
+  } */
 
   Future<Map<String, dynamic>> fetchSchedulePage({
     required String docTypeFilter,
@@ -766,9 +763,9 @@ class HomeCtrl extends GetxController {
 
   // ─── Today's live counts — driven by the today-scoped streams ───────────────
 
-  int get todayAppointmentsCount => todayAppointments.length;
+  // int get todayAppointmentsCount => todayAppointments.length;
 
-  int get todayMeetingsCount => todayMeetings.length;
+  // int get todayMeetingsCount => todayMeetings.length;
 
   // ─── Up-next: scheduled items starting within the next 60 minutes ──────────
   // Reads from the today stream (midnight–23:59:59), no extra query needed.

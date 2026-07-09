@@ -158,7 +158,6 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final idx = _locationIndex(context);
     return GetBuilder<HomeCtrl>(
       builder: (ctrl) {
         if (!ctrl.versionSupported) {
@@ -167,11 +166,6 @@ class _HomeShellState extends State<HomeShell> {
         return Scaffold(
           backgroundColor: DrColors.background,
           body: widget.child,
-          bottomNavigationBar: _FloatingNavBar(
-            activeIndex: idx,
-            onItemTap: (i) => _onNavTap(context, i),
-            onCreateTap: () => _showNewItemSheet(context),
-          ),
         );
       },
     );
@@ -387,8 +381,9 @@ class _NewItemSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: EdgeInsets.fromLTRB(12, 8, 12, 8 + bottomPadding),
       decoration: BoxDecoration(
         color: DrColors.surface,
         borderRadius: BorderRadius.circular(28),
@@ -465,12 +460,12 @@ class _NewItemSheet extends StatelessWidget {
                   subtitle: 'Schedule a patient visit',
                   onTap: () {
                     Navigator.pop(context);
-                    showModalBottomSheet(
-                      context: parentContext,
-                      useRootNavigator: true,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => const AppointmentFormSheet(),
+                    Navigator.push(
+                      parentContext,
+                      MaterialPageRoute(
+                        builder: (_) => const AppointmentFormSheet(),
+                        fullscreenDialog: true,
+                      ),
                     );
                   },
                 ),
@@ -482,12 +477,12 @@ class _NewItemSheet extends StatelessWidget {
                   subtitle: 'Schedule a task or review',
                   onTap: () {
                     Navigator.pop(context);
-                    showModalBottomSheet(
-                      context: parentContext,
-                      useRootNavigator: true,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => const MeetingFormSheet(),
+                    Navigator.push(
+                      parentContext,
+                      MaterialPageRoute(
+                        builder: (_) => const MeetingFormSheet(),
+                        fullscreenDialog: true,
+                      ),
                     );
                   },
                 ),

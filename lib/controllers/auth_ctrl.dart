@@ -23,7 +23,7 @@ class AuthCtrl extends GetxController {
   DoctorModel? currentDoctor;
   List<DoctorModel> allDoctors = [];
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _doctorsSub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _currentDoctorSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _currentDoctorSub;
 
   // Tracks the doc ID of the Firebase-Auth-authenticated doctor.
   // switchDoctor() never changes this — only the actual login does.
@@ -36,7 +36,7 @@ class AuthCtrl extends GetxController {
       isLoggedIn = user != null;
       if (user != null) {
         enteredEmail = user.email ?? '';
-        _listenToDoctorProfile(user.email ?? '');
+        _listenToDoctorProfile(user.uid ?? '');
         _loadAllDoctors();
       } else {
         currentDoctor = null;
@@ -61,15 +61,13 @@ class AuthCtrl extends GetxController {
   void _listenToDoctorProfile(String email) {
     try {
       _currentDoctorSub?.cancel();
-      _currentDoctorSub = FBFireStore.doctors
-          .where('email', isEqualTo: email.trim().toLowerCase())
-          .limit(1)
-          .snapshots()
-          .listen((q) async {
-        if (q.docs.isNotEmpty) {
-          final doc = q.docs.first;
-          final doctor = DoctorModel.fromSnap(doc);
-          
+      _currentDoctorSub = FBFireStore.doctors.doc(email).snapshots().listen((
+        q,
+      ) async {
+        if (q.exists) {
+          final doc = q;
+          final doctor = DoctorModel.fromDocSnap(doc);
+
           // ALWAYS update state first so GoRouter guards read the fresh state!
           currentDoctor = doctor;
           _loggedInDoctorDocId = doc.id;
@@ -79,7 +77,8 @@ class AuthCtrl extends GetxController {
             final context = navigatorKey.currentContext;
             if (context != null) {
               try {
-                final path = globalRouter.routerDelegate.currentConfiguration.uri.path;
+                final path =
+                    globalRouter.routerDelegate.currentConfiguration.uri.path;
                 if (path != '/deactivated') {
                   context.go('/deactivated');
                 }
@@ -92,7 +91,8 @@ class AuthCtrl extends GetxController {
             final context = navigatorKey.currentContext;
             if (context != null) {
               try {
-                final path = globalRouter.routerDelegate.currentConfiguration.uri.path;
+                final path =
+                    globalRouter.routerDelegate.currentConfiguration.uri.path;
                 if (path == '/deactivated') {
                   context.go('/home');
                 }
