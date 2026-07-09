@@ -1,9 +1,11 @@
+import 'package:flutter/services.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../controllers/auth_ctrl.dart';
 import 'package:intl/intl.dart';
 import '../../../controllers/home_ctrl.dart';
 import '../../../models/app_meet_model.dart';
@@ -18,80 +20,26 @@ import 'meetings/meeting_form.dart';
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
 
-  String _greeting() {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: DrColors.background,
-      body: SafeArea(
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
         child: GetBuilder<HomeCtrl>(
           builder: (ctrl) {
-            // final upNext = ctrl.upcomingNextHour;
             return CustomScrollView(
               slivers: [
-                // ── Date + greeting ────────────────────────────────
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  DateFormat(
-                                    'EEEE, MMMM d',
-                                  ).format(DateTime.now()).toUpperCase(),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: DrColors.textTertiary,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${_greeting()} 👋',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w800,
-                                    color: DrColors.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.account_circle_outlined,
-                                size: 30,
-                                color: DrColors.primary,
-                              ),
-                              onPressed: () => context.go('/home/profile'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // // ── Up Next carousel (full screen width — no side padding) ──
-                // SliverToBoxAdapter(child: _UpNextCarousel(items: upNext)),
+                // Top Blue Container
+                const SliverToBoxAdapter(child: _TopHeaderSection()),
 
                 // ── Today stats + Quick actions ────────────────────
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
                   sliver: SliverToBoxAdapter(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,7 +531,8 @@ class _StatCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+
         decoration: BoxDecoration(
           color: DrColors.surface,
           borderRadius: BorderRadius.circular(16),
@@ -596,36 +545,48 @@ class _StatCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$count',
+                    style: GoogleFonts.inter(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: DrColors.textPrimary,
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: DrColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: 12),
-            Text(
-              '$count',
-              style: GoogleFonts.inter(
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-                color: DrColors.textPrimary,
-                height: 1,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                color: DrColors.textSecondary,
-              ),
-            ),
+            // const SizedBox(width: 8),
+            // Container(
+            //   width: 38,
+            //   height: 38,
+            //   decoration: BoxDecoration(
+            //     color: color.withValues(alpha: 0.12),
+            //     borderRadius: BorderRadius.circular(10),
+            //   ),
+            //   child: Icon(icon, color: color, size: 20),
+            // ),
           ],
         ),
       ),
@@ -802,22 +763,22 @@ class _RaySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        /*  Text(
           'Ray',
           style: GoogleFonts.lora(
             fontSize: 26,
             fontWeight: FontWeight.w500,
             color: const Color(0xFF1B2260),
           ),
-        ),
-        const SizedBox(height: 12),
+        ), */
+        // const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
               child: _RayButton(
                 icon: CupertinoIcons.calendar,
                 // icon: Icons.calendar_month_outlined,
-                label: 'Schedule',
+                label: 'Calendar',
                 onTap: () => context.go('/home/schedule'),
               ),
             ),
@@ -825,7 +786,7 @@ class _RaySection extends StatelessWidget {
             Expanded(
               child: _RayButton(
                 icon: Icons.people_outline_rounded,
-                label: 'Contacts',
+                label: 'Patients',
                 onTap: () => context.go('/home/contacts'),
               ),
             ),
@@ -892,6 +853,103 @@ class _RayButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Top Header Section & Tab Item
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TopHeaderSection extends StatelessWidget {
+  const _TopHeaderSection();
+
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    final doctor = AuthCtrl.to.currentDoctor;
+    final doctorName = doctor?.name ?? 'Doctor';
+
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1B2C8C), Color(0xFF2E40B7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 16, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row: Logo & Actions
+          Row(
+            children: [
+              const Image(
+                image: AssetImage('assets/orange-logo.png'),
+                height: 36,
+              ),
+              const Spacer(),
+
+              IconButton(
+                icon: const Icon(
+                  Icons.account_circle_outlined,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                onPressed: () => context.go('/home/profile'),
+              ),
+            ],
+          ),
+          // const SizedBox(height: 16),
+          // // Greeting
+          // Text(
+          //   '${_greeting()},',
+          //   style: GoogleFonts.inter(
+          //     fontSize: 16,
+          //     fontWeight: FontWeight.w400,
+          //     color: Colors.white.withValues(alpha: 0.8),
+          //   ),
+          // ),
+          // const SizedBox(height: 4),
+          // Text(
+          //   '$doctorName 👋',
+          //   style: GoogleFonts.inter(
+          //     fontSize: 26,
+          //     fontWeight: FontWeight.w800,
+          //     color: Colors.white,
+          //   ),
+          // ),
+          /*       const SizedBox(height: 8),
+          // Date
+          Text(
+            DateFormat('EEEE, MMMM d').format(DateTime.now()).toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.6),
+              letterSpacing: 1,
+            ),
+          ), */
+          const SizedBox(height: 24),
+          // // Tabs
+          // const Row(
+          //   children: [
+          //     _TabItem(label: 'APPS', isActive: true),
+          //     SizedBox(width: 24),
+          //     _TabItem(label: 'SUMMARY', isActive: false),
+          //   ],
+          // ),
+        ],
       ),
     );
   }

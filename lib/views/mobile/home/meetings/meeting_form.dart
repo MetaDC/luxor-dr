@@ -82,8 +82,6 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     return list;
   }
 
-
-
   @override
   void initState() {
     super.initState();
@@ -153,7 +151,8 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     final picked = await Navigator.push<DateTime>(
       context,
       MaterialPageRoute(
-        builder: (_) => FullScreenDatePicker(initialDate: _date ?? DateTime.now()),
+        builder: (_) =>
+            FullScreenDatePicker(initialDate: _date ?? DateTime.now()),
         fullscreenDialog: true,
       ),
     );
@@ -205,10 +204,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
       final endM = startM + duration;
       setState(() {
         _startTOD = time;
-        _endTOD = TimeOfDay(
-          hour: (endM ~/ 60) % 24,
-          minute: endM % 60,
-        );
+        _endTOD = TimeOfDay(hour: (endM ~/ 60) % 24, minute: endM % 60);
       });
     }
   }
@@ -294,8 +290,6 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.meeting != null;
@@ -339,7 +333,10 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
           : GestureDetector(
               onTap: () => FocusScope.of(context).unfocus(),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -363,12 +360,20 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                           ),
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 1.0,
+                            ),
                           ),
                           focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                            borderSide: BorderSide(
+                              color: DrColors.primary,
+                              width: 1.5,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -440,14 +445,23 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                                 color: DrColors.textSecondary,
                                 fontSize: 13,
                               ),
-                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.always,
                               enabledBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                                borderSide: BorderSide(
+                                  color: DrColors.border,
+                                  width: 1.0,
+                                ),
                               ),
                               focusedBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                                borderSide: BorderSide(
+                                  color: DrColors.primary,
+                                  width: 1.5,
+                                ),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                              ),
                             ),
                           ),
                         ),
@@ -460,7 +474,9 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                         behavior: HitTestBehavior.opaque,
                         child: IgnorePointer(
                           child: TextFormField(
-                            controller: TextEditingController(text: _formattedTimeRange()),
+                            controller: TextEditingController(
+                              text: _formattedTimeRange(),
+                            ),
                             style: GoogleFonts.inter(
                               fontSize: 15,
                               color: DrColors.textPrimary,
@@ -471,14 +487,23 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                                 color: DrColors.textSecondary,
                                 fontSize: 13,
                               ),
-                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.always,
                               enabledBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                                borderSide: BorderSide(
+                                  color: DrColors.border,
+                                  width: 1.0,
+                                ),
                               ),
                               focusedBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                                borderSide: BorderSide(
+                                  color: DrColors.primary,
+                                  width: 1.5,
+                                ),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                              ),
                             ),
                           ),
                         ),
@@ -535,12 +560,20 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                           ),
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 1.0,
+                            ),
                           ),
                           focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                            borderSide: BorderSide(
+                              color: DrColors.primary,
+                              width: 1.5,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
                         ),
                       ),
                     ],
@@ -664,8 +697,7 @@ class _PersonSelectorState extends State<_PersonSelector> {
     setState(() => _query = lq);
     if (lq.isEmpty) return const [];
     final snap = await FBFireStore.meetingPersons
-        .where('lowerName', isGreaterThanOrEqualTo: lq)
-        .where('lowerName', isLessThanOrEqualTo: '$lq\uf8ff')
+        .where('combinationNames', arrayContains: lq)
         .limit(10)
         .get();
     final res = snap.docs.map(MeetingPersonModel.fromSnap).toList();
@@ -738,10 +770,16 @@ class _PersonSelectorState extends State<_PersonSelector> {
                     ),
                     floatingLabelBehavior: FloatingLabelBehavior.always,
                     enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                      borderSide: BorderSide(
+                        color: DrColors.border,
+                        width: 1.0,
+                      ),
                     ),
                     focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                      borderSide: BorderSide(
+                        color: DrColors.primary,
+                        width: 1.5,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 4),
                     suffixIcon: Row(
@@ -760,7 +798,10 @@ class _PersonSelectorState extends State<_PersonSelector> {
                             },
                           ),
                         IconButton(
-                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                          icon: const Icon(
+                            Icons.person_add_alt_1_rounded,
+                            size: 20,
+                          ),
                           onPressed: _quickCreate,
                           color: DrColors.primary,
                         ),
@@ -939,7 +980,7 @@ class _QuickCreatePersonDialogState extends State<_QuickCreatePersonDialog> {
               const SizedBox(height: 16),
               AppTextField(
                 label: 'Full Name *',
-                hint: 'Contact name',
+                hint: 'Patient name',
                 controller: _nameCtrl,
                 textCapitalization: TextCapitalization.words,
                 autofocus: true,

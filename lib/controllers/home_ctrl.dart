@@ -9,6 +9,7 @@ import '../models/app_meet_model.dart';
 import '../models/meeting_per_model.dart';
 import '../models/patient_model.dart';
 import '../utils/firebase.dart';
+import '../utils/methods.dart';
 import 'auth_ctrl.dart';
 
 class HomeCtrl extends GetxController {
@@ -183,12 +184,16 @@ class HomeCtrl extends GetxController {
       // final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
       final ref = FBFireStore.patients.doc();
       final now = Timestamp.fromDate(DateTime.now());
+      final (code, rest) = splitStoredPhone(phone);
       final data = {
         'docId': ref.id,
         'name': name.trim(),
         'lowerName': name.trim().toLowerCase(),
         'email': email.trim(),
         'phone': phone.trim(),
+        'countryCode': code,
+        'phoneNumber': rest,
+        'combinationNames': generateSearchCombinations(name),
         // 'doctorId': doctorId,
         'createdByRole': 'doctor',
         'createdAt': now,
@@ -215,12 +220,16 @@ class HomeCtrl extends GetxController {
       // final doctorId = AuthCtrl.to.currentDoctor?.docId;
       final ref = FBFireStore.meetingPersons.doc();
       final now = Timestamp.fromDate(DateTime.now());
+      final (code, rest) = splitStoredPhone(phone);
       final data = {
         'docId': ref.id,
         'name': name.trim(),
         'lowerName': name.trim().toLowerCase(),
         'email': email.trim(),
         'phone': phone.trim(),
+        'countryCode': code,
+        'phoneNumber': rest,
+        'combinationNames': generateSearchCombinations(name),
         // 'doctorId': doctorId,
         'createdByRole': 'doctor',
         'createdAt': now,

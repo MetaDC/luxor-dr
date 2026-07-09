@@ -308,481 +308,498 @@ class _ScheduleViewState extends State<ScheduleView> {
     final dates = _weekDates();
     final filtered = _filtered;
 
-    return Scaffold(
-      backgroundColor: DrColors.background,
-      appBar: AppBar(
-        backgroundColor: DrColors.primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => context.go('/home'),
-        ),
-        title: Text(
-          'SCHEDULE',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            fontSize: 16,
-            letterSpacing: 0.5,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go('/home');
+      },
+      child: Scaffold(
+        backgroundColor: DrColors.background,
+        appBar: AppBar(
+          backgroundColor: DrColors.primary,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => context.go('/home'),
           ),
-        ),
-        centerTitle: false,
-        actions: [
-          GestureDetector(
-            onTap: () => _showVerticalCalendarDialog(context),
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              margin: EdgeInsets.only(right: !_isToday(_selectedDate) ? 0 : 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    DateFormat('MMM yy').format(_selectedDate).toUpperCase(),
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+          title: Text(
+            'SCHEDULE',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              fontSize: 16,
+              letterSpacing: 0.5,
+            ),
+          ),
+          centerTitle: false,
+          actions: [
+            GestureDetector(
+              onTap: () => _showVerticalCalendarDialog(context),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                margin: EdgeInsets.only(
+                  right: !_isToday(_selectedDate) ? 0 : 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      DateFormat('MMM yy').format(_selectedDate).toUpperCase(),
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.arrow_drop_down_rounded,
                       color: Colors.white,
-                      letterSpacing: 0.5,
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            if (!_isToday(_selectedDate))
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedDate = DateTime.now();
+                  });
+                  _fetchInitialSchedule();
+                },
+                child: Text(
+                  'TODAY',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Doctor Selector Dropdown ──────────────────────
+                  GetBuilder<AuthCtrl>(
+                    builder: (auth) {
+                      final doctors = auth.allDoctors;
+                      final current = auth.currentDoctor;
+                      if (doctors.length <= 1 ||
+                          current == null ||
+                          !doctors.contains(current)) {
+                        return const SizedBox.shrink();
+                      }
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: DrColors.primaryLight.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: DrColors.border,
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            DropdownButtonHideUnderline(
+                              child: DropdownButton<DoctorModel>(
+                                value: current,
+                                isExpanded: true,
+                                isDense: true,
+                                icon: const Icon(
+                                  Icons.arrow_drop_down_rounded,
+                                  color: DrColors.primary,
+                                ),
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w600,
+                                  color: DrColors.textPrimary,
+                                  fontSize: 15,
+                                ),
+                                dropdownColor: DrColors.background,
+                                items: doctors.map((doc) {
+                                  return DropdownMenuItem<DoctorModel>(
+                                    value: doc,
+                                    child: Text(
+                                      doc.name,
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w500,
+                                        color: DrColors.textPrimary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (newDoc) {
+                                  if (newDoc != null && newDoc != current) {
+                                    auth.switchDoctor(newDoc);
+                                    _fetchInitialSchedule();
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  // ── Week Date Strip ──────────────────────────────
+                  SizedBox(
+                    height: 50,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: dates.length,
+                      separatorBuilder: (_, si) => const SizedBox(width: 6),
+                      itemBuilder: (_, i) {
+                        final d = dates[i];
+                        final now = DateTime.now();
+                        final isToday =
+                            d.year == now.year &&
+                            d.month == now.month &&
+                            d.day == now.day;
+                        final isSelected =
+                            d.year == _selectedDate.year &&
+                            d.month == _selectedDate.month &&
+                            d.day == _selectedDate.day;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() => _selectedDate = d);
+                            _fetchInitialSchedule();
+                          },
+                          child: Container(
+                            width: 46,
+                            color: Colors.transparent,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  DateFormat('EEE').format(d),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? DrColors.textPrimary
+                                        : DrColors.textTertiary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? DrColors.accent
+                                        : Colors.transparent,
+                                    shape: BoxShape.circle,
+                                    border: isToday && !isSelected
+                                        ? Border.all(
+                                            color: DrColors.accent,
+                                            width: 1.5,
+                                          )
+                                        : null,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${d.day}',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : isToday
+                                            ? DrColors.accent
+                                            : DrColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.arrow_drop_down_rounded,
-                    color: Colors.white,
-                    size: 16,
+
+                  const SizedBox(height: 6),
+
+                  // ── Type filter (segmented) ──────────────────────
+                  CupertinoSlidingSegmentedControl<_TypeFilter>(
+                    groupValue: _typeFilter,
+                    onValueChanged: (v) {
+                      if (v != null) {
+                        setState(() => _typeFilter = v);
+                        _fetchInitialSchedule();
+                      }
+                    },
+                    padding: const EdgeInsets.all(3),
+                    backgroundColor: Colors.white,
+                    thumbColor: _typeFilter == _TypeFilter.meetings
+                        ? DrColors.accent.withValues(alpha: 0.7)
+                        : DrColors.primary.withValues(alpha: 0.7),
+
+                    children: {
+                      _TypeFilter.all: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        child: Text(
+                          'All',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _typeFilter == _TypeFilter.all
+                                ? Colors.white
+                                : DrColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      _TypeFilter.appointments: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        child: Text(
+                          'Appointments',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _typeFilter == _TypeFilter.appointments
+                                ? Colors.white
+                                : DrColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      _TypeFilter.meetings: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        child: Text(
+                          'Tasks',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _typeFilter == _TypeFilter.meetings
+                                ? Colors.white
+                                : DrColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    },
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // ── Status filter chips ──────────────────────────
+                  SizedBox(
+                    height: 26,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _statuses.length,
+                      separatorBuilder: (_, si) => const SizedBox(width: 5),
+                      itemBuilder: (_, i) {
+                        final s = _statuses[i];
+                        final active = _statusFilter == s;
+                        final color = s == 'Scheduled'
+                            ? DrColors.primary
+                            : s == 'Completed'
+                            ? DrColors.success
+                            : s == 'Cancelled'
+                            ? DrColors.error
+                            : DrColors.textSecondary;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() => _statusFilter = s);
+                            _fetchInitialSchedule();
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: active
+                                  ? color.withValues(alpha: 0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: active ? color : DrColors.border,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                s,
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: active
+                                      ? color
+                                      : DrColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
 
-          if (!_isToday(_selectedDate))
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _selectedDate = DateTime.now();
-                });
-                _fetchInitialSchedule();
-              },
-              child: Text(
-                'TODAY',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 12, 10, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Doctor Selector Dropdown ──────────────────────
-                GetBuilder<AuthCtrl>(
-                  builder: (auth) {
-                    final doctors = auth.allDoctors;
-                    final current = auth.currentDoctor;
-                    if (doctors.length <= 1 ||
-                        current == null ||
-                        !doctors.contains(current)) {
-                      return const SizedBox.shrink();
-                    }
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+            const SizedBox(height: 6),
+
+            // ── List ─────────────────────────────────────────────
+            Expanded(
+              child: _loading
+                  ? Center(
+                      child: LoadingAnimationWidget.staggeredDotsWave(
+                        color: DrColors.primary,
+                        size: 32,
                       ),
-                      decoration: BoxDecoration(
-                        color: DrColors.primaryLight.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: DrColors.border, width: 1.0),
+                    )
+                  : filtered.isEmpty
+                  ? _EmptyState(
+                      hasFilters:
+                          _typeFilter != _TypeFilter.all ||
+                          _statusFilter != 'Scheduled',
+                      onClearFilters: () {
+                        setState(() {
+                          _typeFilter = _TypeFilter.all;
+                          _statusFilter = 'Scheduled';
+                        });
+                        _fetchInitialSchedule();
+                      },
+                    )
+                  : ListView.separated(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
+                      itemCount: filtered.length + (_hasMore ? 1 : 0),
+                      separatorBuilder: (_, si) => const Divider(
+                        height: 1,
+                        thickness: 0.5,
+                        color: DrColors.border,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          DropdownButtonHideUnderline(
-                            child: DropdownButton<DoctorModel>(
-                              value: current,
-                              isExpanded: true,
-                              isDense: true,
-                              icon: const Icon(
-                                Icons.arrow_drop_down_rounded,
+                      itemBuilder: (_, i) {
+                        if (i == filtered.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: CircularProgressIndicator(
                                 color: DrColors.primary,
+                                strokeWidth: 2.5,
                               ),
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w600,
-                                color: DrColors.textPrimary,
-                                fontSize: 15,
-                              ),
-                              dropdownColor: DrColors.background,
-                              items: doctors.map((doc) {
-                                return DropdownMenuItem<DoctorModel>(
-                                  value: doc,
-                                  child: Text(
-                                    doc.name,
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w500,
-                                      color: DrColors.textPrimary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (newDoc) {
-                                if (newDoc != null && newDoc != current) {
-                                  auth.switchDoctor(newDoc);
-                                  _fetchInitialSchedule();
-                                }
-                              },
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                // ── Week Date Strip ──────────────────────────────
-                SizedBox(
-                  height: 50,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: dates.length,
-                    separatorBuilder: (_, si) => const SizedBox(width: 6),
-                    itemBuilder: (_, i) {
-                      final d = dates[i];
-                      final now = DateTime.now();
-                      final isToday =
-                          d.year == now.year &&
-                          d.month == now.month &&
-                          d.day == now.day;
-                      final isSelected =
-                          d.year == _selectedDate.year &&
-                          d.month == _selectedDate.month &&
-                          d.day == _selectedDate.day;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _selectedDate = d);
-                          _fetchInitialSchedule();
-                        },
-                        child: Container(
-                          width: 46,
-                          color: Colors.transparent,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                DateFormat('EEE').format(d),
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  color: isSelected
-                                      ? DrColors.textPrimary
-                                      : DrColors.textTertiary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                width: 30,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? DrColors.accent
-                                      : Colors.transparent,
-                                  shape: BoxShape.circle,
-                                  border: isToday && !isSelected
-                                      ? Border.all(
-                                          color: DrColors.accent,
-                                          width: 1.5,
-                                        )
-                                      : null,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${d.day}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : isToday
-                                          ? DrColors.accent
-                                          : DrColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          );
+                        }
+
+                        final item = filtered[i];
+                        final showHeader =
+                            i == 0 ||
+                            !_isSameDay(
+                              item.startTime,
+                              filtered[i - 1].startTime,
+                            );
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (showHeader) _DateHeader(date: item.startTime),
+                            _ScheduleCard(item: item, onRefresh: _refresh),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: DrColors.border, width: 0.5)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MeetingFormSheet(),
+                          fullscreenDialog: true,
                         ),
-                      );
+                      ).then((_) => _refresh());
                     },
+                    child: Text(
+                      'ADD TASK',
+                      style: GoogleFonts.inter(
+                        color: DrColors.accent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
                 ),
-
-                const SizedBox(height: 6),
-
-                // ── Type filter (segmented) ──────────────────────
-                CupertinoSlidingSegmentedControl<_TypeFilter>(
-                  groupValue: _typeFilter,
-                  onValueChanged: (v) {
-                    if (v != null) {
-                      setState(() => _typeFilter = v);
-                      _fetchInitialSchedule();
-                    }
-                  },
-                  padding: const EdgeInsets.all(3),
-                  backgroundColor: Colors.white,
-                  thumbColor: _typeFilter == _TypeFilter.meetings
-                      ? DrColors.accent.withValues(alpha: 0.7)
-                      : DrColors.primary.withValues(alpha: 0.7),
-
-                  children: {
-                    _TypeFilter.all: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      child: Text(
-                        'All',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _typeFilter == _TypeFilter.all
-                              ? Colors.white
-                              : DrColors.textSecondary,
+                Container(width: 1, height: 24, color: DrColors.border),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AppointmentFormSheet(),
+                          fullscreenDialog: true,
                         ),
-                      ),
-                    ),
-                    _TypeFilter.appointments: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      child: Text(
-                        'Appointments',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _typeFilter == _TypeFilter.appointments
-                              ? Colors.white
-                              : DrColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    _TypeFilter.meetings: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      child: Text(
-                        'Tasks',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _typeFilter == _TypeFilter.meetings
-                              ? Colors.white
-                              : DrColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  },
-                ),
-
-                const SizedBox(height: 6),
-
-                // ── Status filter chips ──────────────────────────
-                SizedBox(
-                  height: 26,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _statuses.length,
-                    separatorBuilder: (_, si) => const SizedBox(width: 5),
-                    itemBuilder: (_, i) {
-                      final s = _statuses[i];
-                      final active = _statusFilter == s;
-                      final color = s == 'Scheduled'
-                          ? DrColors.primary
-                          : s == 'Completed'
-                          ? DrColors.success
-                          : s == 'Cancelled'
-                          ? DrColors.error
-                          : DrColors.textSecondary;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _statusFilter = s);
-                          _fetchInitialSchedule();
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: active
-                                ? color.withValues(alpha: 0.12)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: active ? color : DrColors.border,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              s,
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: active ? color : DrColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
+                      ).then((_) => _refresh());
                     },
+                    child: Text(
+                      'ADD APPOINTMENT',
+                      style: GoogleFonts.inter(
+                        color: DrColors.accent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-
-          const SizedBox(height: 6),
-
-          // ── List ─────────────────────────────────────────────
-          Expanded(
-            child: _loading
-                ? Center(
-                    child: LoadingAnimationWidget.staggeredDotsWave(
-                      color: DrColors.primary,
-                      size: 32,
-                    ),
-                  )
-                : filtered.isEmpty
-                ? _EmptyState(
-                    hasFilters:
-                        _typeFilter != _TypeFilter.all ||
-                        _statusFilter != 'Scheduled',
-                    onClearFilters: () {
-                      setState(() {
-                        _typeFilter = _TypeFilter.all;
-                        _statusFilter = 'Scheduled';
-                      });
-                      _fetchInitialSchedule();
-                    },
-                  )
-                : ListView.separated(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
-                    itemCount: filtered.length + (_hasMore ? 1 : 0),
-                    separatorBuilder: (_, si) => const Divider(
-                      height: 1,
-                      thickness: 0.5,
-                      color: DrColors.border,
-                    ),
-                    itemBuilder: (_, i) {
-                      if (i == filtered.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: DrColors.primary,
-                              strokeWidth: 2.5,
-                            ),
-                          ),
-                        );
-                      }
-
-                      final item = filtered[i];
-                      final showHeader =
-                          i == 0 ||
-                          !_isSameDay(
-                            item.startTime,
-                            filtered[i - 1].startTime,
-                          );
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (showHeader) _DateHeader(date: item.startTime),
-                          _ScheduleCard(item: item, onRefresh: _refresh),
-                        ],
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: DrColors.border, width: 0.5)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MeetingFormSheet(),
-                        fullscreenDialog: true,
-                      ),
-                    ).then((_) => _refresh());
-                  },
-                  child: Text(
-                    'ADD TASK',
-                    style: GoogleFonts.inter(
-                      color: DrColors.accent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-              Container(width: 1, height: 24, color: DrColors.border),
-              Expanded(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AppointmentFormSheet(),
-                        fullscreenDialog: true,
-                      ),
-                    ).then((_) => _refresh());
-                  },
-                  child: Text(
-                    'ADD APPOINTMENT',
-                    style: GoogleFonts.inter(
-                      color: DrColors.accent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -1137,7 +1154,12 @@ class _ScheduleCard extends StatelessWidget {
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: EdgeInsets.fromLTRB(24, 0, 24, 24 + MediaQuery.of(ctx).padding.bottom),
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    0,
+                    24,
+                    24 + MediaQuery.of(ctx).padding.bottom,
+                  ),
                   children: [
                     _buildTimelineItem(
                       icon: Icons.access_time_filled_rounded,
@@ -1551,18 +1573,18 @@ class _ScheduleCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        color: _isAppt
-                            ? DrColors.primary.withValues(alpha: 0.5)
-                            : DrColors.accent.withValues(alpha: 0.5),
-                      ),
+                      // border: Border.all(
+                      color: _isAppt
+                          ? DrColors.primary.withValues(alpha: 0.5)
+                          : DrColors.accent.withValues(alpha: 0.5),
+                      // ),
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: Text(
                       _isAppt ? 'Appointment' : 'Task',
                       style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: DrColors.textSecondary,
+                        color: DrColors.background,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1757,7 +1779,12 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
         //   ),
         // ],
       ),
-      padding: EdgeInsets.fromLTRB(20, 20, 20, bottom + 16 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        bottom + 16 + MediaQuery.of(context).padding.bottom,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

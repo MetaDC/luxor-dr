@@ -80,8 +80,6 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     return list;
   }
 
-
-
   @override
   void initState() {
     super.initState();
@@ -150,7 +148,8 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     final picked = await Navigator.push<DateTime>(
       context,
       MaterialPageRoute(
-        builder: (_) => FullScreenDatePicker(initialDate: _date ?? DateTime.now()),
+        builder: (_) =>
+            FullScreenDatePicker(initialDate: _date ?? DateTime.now()),
         fullscreenDialog: true,
       ),
     );
@@ -202,10 +201,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
       final endM = startM + duration;
       setState(() {
         _startTOD = time;
-        _endTOD = TimeOfDay(
-          hour: (endM ~/ 60) % 24,
-          minute: endM % 60,
-        );
+        _endTOD = TimeOfDay(hour: (endM ~/ 60) % 24, minute: endM % 60);
       });
     }
   }
@@ -297,8 +293,6 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.appointment != null;
@@ -343,7 +337,10 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
           : GestureDetector(
               onTap: () => FocusScope.of(context).unfocus(),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 20,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -373,12 +370,20 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                           ),
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 1.0,
+                            ),
                           ),
                           focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                            borderSide: BorderSide(
+                              color: DrColors.primary,
+                              width: 1.5,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -386,7 +391,9 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                       // Doctor Name (Read-only)
                       TextFormField(
                         readOnly: true,
-                        controller: TextEditingController(text: doctor?.name ?? 'Dr Saumya Nayak'),
+                        controller: TextEditingController(
+                          text: doctor?.name ?? 'Dr Saumya Nayak',
+                        ),
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           color: DrColors.textPrimary,
@@ -399,12 +406,20 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                           ),
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 1.0,
+                            ),
                           ),
                           focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                            borderSide: BorderSide(
+                              color: DrColors.primary,
+                              width: 1.5,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -430,14 +445,23 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                                 color: DrColors.textSecondary,
                                 fontSize: 13,
                               ),
-                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.always,
                               enabledBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                                borderSide: BorderSide(
+                                  color: DrColors.border,
+                                  width: 1.0,
+                                ),
                               ),
                               focusedBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                                borderSide: BorderSide(
+                                  color: DrColors.primary,
+                                  width: 1.5,
+                                ),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                              ),
                             ),
                           ),
                         ),
@@ -450,7 +474,9 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                         behavior: HitTestBehavior.opaque,
                         child: IgnorePointer(
                           child: TextFormField(
-                            controller: TextEditingController(text: _formattedTimeRange()),
+                            controller: TextEditingController(
+                              text: _formattedTimeRange(),
+                            ),
                             style: GoogleFonts.inter(
                               fontSize: 15,
                               color: DrColors.textPrimary,
@@ -461,14 +487,23 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                                 color: DrColors.textSecondary,
                                 fontSize: 13,
                               ),
-                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.always,
                               enabledBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                                borderSide: BorderSide(
+                                  color: DrColors.border,
+                                  width: 1.0,
+                                ),
                               ),
                               focusedBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                                borderSide: BorderSide(
+                                  color: DrColors.primary,
+                                  width: 1.5,
+                                ),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                              ),
                             ),
                           ),
                         ),
@@ -486,17 +521,28 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                           ),
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 1.0,
+                            ),
                           ),
                           focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                            borderSide: BorderSide(
+                              color: DrColors.primary,
+                              width: 1.5,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
                         ),
                         items: _apptTypes.map((t) {
                           return DropdownMenuItem<String>(
                             value: t,
-                            child: Text(t, style: GoogleFonts.inter(fontSize: 14)),
+                            child: Text(
+                              t,
+                              style: GoogleFonts.inter(fontSize: 14),
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -527,12 +573,20 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                           ),
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                            borderSide: BorderSide(
+                              color: DrColors.border,
+                              width: 1.0,
+                            ),
                           ),
                           focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                            borderSide: BorderSide(
+                              color: DrColors.primary,
+                              width: 1.5,
+                            ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
                         ),
                       ),
                     ],
@@ -657,8 +711,7 @@ class _PatientSelectorState extends State<_PatientSelector> {
     setState(() => _query = lq);
     if (lq.isEmpty) return const [];
     final snap = await FBFireStore.patients
-        .where('lowerName', isGreaterThanOrEqualTo: lq)
-        .where('lowerName', isLessThanOrEqualTo: '$lq\uf8ff')
+        .where('combinationNames', arrayContains: lq)
         .limit(10)
         .get();
     final res = snap.docs.map(PatientModel.fromQueryDocumentSnapshot).toList();
@@ -736,10 +789,16 @@ class _PatientSelectorState extends State<_PatientSelector> {
                     ),
                     floatingLabelBehavior: FloatingLabelBehavior.always,
                     enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: DrColors.border, width: 1.0),
+                      borderSide: BorderSide(
+                        color: DrColors.border,
+                        width: 1.0,
+                      ),
                     ),
                     focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: DrColors.primary, width: 1.5),
+                      borderSide: BorderSide(
+                        color: DrColors.primary,
+                        width: 1.5,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 4),
                     suffixIcon: Row(
@@ -758,7 +817,10 @@ class _PatientSelectorState extends State<_PatientSelector> {
                             },
                           ),
                         IconButton(
-                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                          icon: const Icon(
+                            Icons.person_add_alt_1_rounded,
+                            size: 20,
+                          ),
                           onPressed: _quickCreate,
                           color: DrColors.primary,
                         ),

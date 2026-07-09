@@ -42,7 +42,7 @@ class ContactEntry {
   }
 
   Color get typeColor => DrColors.primary;
-  String get typeLabel => 'Contact';
+  String get typeLabel => 'Patient';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,6 +68,7 @@ class _ContactsViewState extends State<ContactsView> {
   bool _loading = false;
   bool _hasMore = true;
   static const int _pageSize = 20;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -79,6 +80,7 @@ class _ContactsViewState extends State<ContactsView> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _cancelAllSubs();
     _searchCtrl.removeListener(_onSearchChanged);
     _searchCtrl.dispose();
@@ -88,15 +90,33 @@ class _ContactsViewState extends State<ContactsView> {
 
   void _onSearchChanged() {
     final cleanVal = _searchCtrl.text.trim().toLowerCase();
-    if (_query == cleanVal) return;
-    setState(() {
-      _query = cleanVal;
-      _cancelAllSubs();
-      _pages.clear();
-      _pageBoundaryDocs.clear();
-      _hasMore = true;
-    });
-    _loadPage(0);
+    _debounceTimer?.cancel();
+
+    if (cleanVal.isEmpty) {
+      if (_query.isEmpty) return;
+      setState(() {
+        _query = '';
+        _cancelAllSubs();
+        _pages.clear();
+        _pageBoundaryDocs.clear();
+        _hasMore = true;
+      });
+      _loadPage(0);
+    } else if (cleanVal.length >= 3) {
+      _debounceTimer = Timer(const Duration(milliseconds: 200), () {
+        if (_query == cleanVal) return;
+        if (mounted) {
+          setState(() {
+            _query = cleanVal;
+            _cancelAllSubs();
+            _pages.clear();
+            _pageBoundaryDocs.clear();
+            _hasMore = true;
+          });
+          _loadPage(0);
+        }
+      });
+    }
   }
 
   void _onScroll() {
@@ -108,66 +128,109 @@ class _ContactsViewState extends State<ContactsView> {
     }
   }
 
-  void _loadPage(int pageIndex) {
+  void _loadPage(int pageIndex) async {
     if (pageIndex < _pages.length) return;
     if (mounted) setState(() => _loading = true);
 
-    Query<Map<String, dynamic>> query = FBFireStore.patients;
     if (_query.isEmpty) {
-      query = query.orderBy('lowerName');
-    } else {
-      query = query
-          .where('lowerName', isGreaterThanOrEqualTo: _query)
-          .where('lowerName', isLessThanOrEqualTo: '$_query\uf8ff')
-          .orderBy('lowerName');
-    }
-
-    if (pageIndex > 0 && _pageBoundaryDocs.length >= pageIndex) {
-      final prevDoc = _pageBoundaryDocs[pageIndex - 1];
-      if (prevDoc != null) {
-        query = query.startAfterDocument(prevDoc);
+      Query<Map<String, dynamic>> query = FBFireStore.patients.orderBy(
+        'lowerName',
+      );
+      if (pageIndex > 0 && _pageBoundaryDocs.length >= pageIndex) {
+        final prevDoc = _pageBoundaryDocs[pageIndex - 1];
+        if (prevDoc != null) {
+          query = query.startAfterDocument(prevDoc);
+        }
       }
-    }
+      query = query.limit(_pageSize);
 
-    query = query.limit(_pageSize);
+      final sub = query.snapshots().listen(
+        (snapshot) {
+          final items = snapshot.docs
+              .map(PatientModel.fromQueryDocumentSnapshot)
+              .toList();
 
-    final sub = query.snapshots().listen(
-      (snapshot) {
-        final items = snapshot.docs
-            .map(PatientModel.fromQueryDocumentSnapshot)
-            .toList();
+          if (pageIndex < _pages.length) {
+            _pages[pageIndex] = items;
+          } else {
+            _pages.add(items);
+          }
 
-        if (pageIndex < _pages.length) {
-          _pages[pageIndex] = items;
-        } else {
-          _pages.add(items);
+          final boundaryDoc = snapshot.docs.isNotEmpty
+              ? snapshot.docs.last
+              : null;
+          if (pageIndex < _pageBoundaryDocs.length) {
+            _pageBoundaryDocs[pageIndex] = boundaryDoc;
+          } else {
+            _pageBoundaryDocs.add(boundaryDoc);
+          }
+
+          _hasMore = items.length == _pageSize;
+
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+          }
+        },
+        onError: (e) {
+          if (mounted) {
+            setState(() => _loading = false);
+          }
+        },
+      );
+
+      _pageSubs.add(sub);
+    } else {
+      try {
+        final q1 = FBFireStore.patients
+            .where('combinationNames', arrayContains: _query)
+            .get();
+        final q2 = FBFireStore.patients
+            .where('email', isGreaterThanOrEqualTo: _query)
+            .where('email', isLessThanOrEqualTo: '$_query\uf8ff')
+            .get();
+        final q3 = FBFireStore.patients
+            .where('phone', isGreaterThanOrEqualTo: _query)
+            .where('phone', isLessThanOrEqualTo: '$_query\uf8ff')
+            .get();
+        final q4 = FBFireStore.patients
+            .where('phoneNumber', isGreaterThanOrEqualTo: _query)
+            .where('phoneNumber', isLessThanOrEqualTo: '$_query\uf8ff')
+            .get();
+
+        final snaps = await Future.wait([q1, q2, q3, q4]);
+
+        final uniquePatients = <String, PatientModel>{};
+        for (final snap in snaps) {
+          for (final doc in snap.docs) {
+            final model = PatientModel.fromQueryDocumentSnapshot(doc);
+            uniquePatients[model.docId] = model;
+          }
         }
 
-        final boundaryDoc = snapshot.docs.isNotEmpty
-            ? snapshot.docs.last
-            : null;
-        if (pageIndex < _pageBoundaryDocs.length) {
-          _pageBoundaryDocs[pageIndex] = boundaryDoc;
-        } else {
-          _pageBoundaryDocs.add(boundaryDoc);
-        }
+        final results = uniquePatients.values.toList();
+        results.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
 
-        _hasMore = items.length == _pageSize;
+        _hasMore = false; // Search results are not paginated
 
         if (mounted) {
           setState(() {
+            _pages.clear();
+            _pages.add(results);
+            _pageBoundaryDocs.clear();
             _loading = false;
           });
         }
-      },
-      onError: (e) {
+      } catch (e) {
+        debugPrint('Search error: $e');
         if (mounted) {
           setState(() => _loading = false);
         }
-      },
-    );
-
-    _pageSubs.add(sub);
+      }
+    }
   }
 
   void _cancelAllSubs() {
@@ -198,163 +261,171 @@ class _ContactsViewState extends State<ContactsView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DrColors.background,
-      appBar: AppBar(
-        backgroundColor: DrColors.primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => context.go('/home'),
-        ),
-        title: Text(
-          'CONTACTS',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            fontSize: 18,
-            letterSpacing: 0.5,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go('/home');
+      },
+      child: Scaffold(
+        backgroundColor: DrColors.background,
+        appBar: AppBar(
+          backgroundColor: DrColors.primary,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => context.go('/home'),
           ),
-        ),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded, color: Colors.white),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => const _CreateContactDialog(),
-              );
-            },
+          title: Text(
+            'Pateints',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              fontSize: 18,
+              letterSpacing: 0.5,
+            ),
           ),
-        ],
-      ),
-      body: GetBuilder<HomeCtrl>(
-        builder: (ctrl) {
-          final allPatients = _allLoadedPatients;
-          final visible = _build(allPatients);
+          centerTitle: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => const _CreateContactDialog(),
+                );
+              },
+            ),
+          ],
+        ),
+        body: GetBuilder<HomeCtrl>(
+          builder: (ctrl) {
+            final allPatients = _allLoadedPatients;
+            final visible = _build(allPatients);
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 16, 10, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Search ──────────────────────────────────────
-                    SizedBox(
-                      // decoration: BoxDecoration(
-                      //   color: DrColors.surface,
-                      //   borderRadius: BorderRadius.circular(12),
-                      //   border: Border.all(
-                      //     color: DrColors.border,
-                      //     width: 0.5,
-                      //   ),
-                      // ),
-                      child: TextField(
-                        controller: _searchCtrl,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: DrColors.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Search by name, email or phone…',
-                          hintStyle: GoogleFonts.inter(
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 16, 10, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Search ──────────────────────────────────────
+                      SizedBox(
+                        // decoration: BoxDecoration(
+                        //   color: DrColors.surface,
+                        //   borderRadius: BorderRadius.circular(12),
+                        //   border: Border.all(
+                        //     color: DrColors.border,
+                        //     width: 0.5,
+                        //   ),
+                        // ),
+                        child: TextField(
+                          controller: _searchCtrl,
+                          style: GoogleFonts.inter(
                             fontSize: 14,
-                            color: DrColors.textTertiary,
+                            color: DrColors.textPrimary,
                           ),
-                          prefixIcon: const Icon(
-                            Icons.search_rounded,
-                            color: DrColors.textTertiary,
-                            size: 20,
-                          ),
-                          suffixIcon: _query.isNotEmpty
-                              ? GestureDetector(
-                                  onTap: _searchCtrl.clear,
-                                  child: const Icon(
-                                    Icons.close_rounded,
-                                    size: 18,
-                                    color: DrColors.textTertiary,
-                                  ),
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: DrColors.border,
-                              width: 0.5,
+                          decoration: InputDecoration(
+                            hintText: 'Search by name, email or phone…',
+                            hintStyle: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: DrColors.textTertiary,
                             ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: DrColors.border,
-                              width: 0.5,
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: DrColors.textTertiary,
+                              size: 20,
                             ),
-                          ),
-                          disabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: DrColors.border,
-                              width: 0.5,
+                            suffixIcon: _query.isNotEmpty
+                                ? GestureDetector(
+                                    onTap: _searchCtrl.clear,
+                                    child: const Icon(
+                                      Icons.close_rounded,
+                                      size: 18,
+                                      color: DrColors.textTertiary,
+                                    ),
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: DrColors.border,
+                                width: 0.5,
+                              ),
                             ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: DrColors.border,
-                              width: 0.5,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: DrColors.border,
+                                width: 0.5,
+                              ),
                             ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: DrColors.border,
+                                width: 0.5,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: DrColors.border,
+                                width: 0.5,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
+                      const SizedBox(height: 10),
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 8),
+                const SizedBox(height: 8),
 
-              // ── List ────────────────────────────────────────────
-              Expanded(
-                child: visible.isEmpty && !_loading
-                    ? _EmptyState(hasSearch: _query.isNotEmpty)
-                    : ListView.separated(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.fromLTRB(10, 4, 10, 32),
-                        itemCount: visible.length + (_hasMore ? 1 : 0),
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) {
-                          if (i == visible.length) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Center(
-                                child: CupertinoActivityIndicator(),
+                // ── List ────────────────────────────────────────────
+                Expanded(
+                  child: visible.isEmpty && !_loading
+                      ? _EmptyState(hasSearch: _query.isNotEmpty)
+                      : ListView.separated(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.fromLTRB(10, 4, 10, 32),
+                          itemCount: visible.length + (_hasMore ? 1 : 0),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (_, i) {
+                            if (i == visible.length) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Center(
+                                  child: CupertinoActivityIndicator(),
+                                ),
+                              );
+                            }
+                            return _ContactCard(
+                              contact: visible[i],
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      ContactDetailView(contact: visible[i]),
+                                ),
                               ),
                             );
-                          }
-                          return _ContactCard(
-                            contact: visible[i],
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ContactDetailView(contact: visible[i]),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          );
-        },
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -593,7 +664,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            hasSearch ? 'No results found' : 'No contacts yet',
+            hasSearch ? 'No results found' : 'No patients yet',
             style: GoogleFonts.inter(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -604,7 +675,7 @@ class _EmptyState extends StatelessWidget {
           Text(
             hasSearch
                 ? 'Try a different name, email or phone'
-                : 'Contacts will appear here',
+                : 'Patients will appear here',
             style: GoogleFonts.inter(
               fontSize: 12,
               color: DrColors.textTertiary,
@@ -667,9 +738,9 @@ class _CreateContactDialogState extends State<_CreateContactDialog> {
     setState(() => _loading = false);
     if (p != null) {
       Navigator.pop(context);
-      AppSnackbar.success(context, 'Contact created successfully.');
+      AppSnackbar.success(context, 'Patient created successfully.');
     } else {
-      AppSnackbar.error(context, 'Failed to create contact.');
+      AppSnackbar.error(context, 'Failed to create patient.');
     }
   }
 
@@ -686,7 +757,7 @@ class _CreateContactDialogState extends State<_CreateContactDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Create Contact',
+                'Create Patient',
                 style: GoogleFonts.inter(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -696,7 +767,7 @@ class _CreateContactDialogState extends State<_CreateContactDialog> {
               const SizedBox(height: 16),
               AppTextField(
                 label: 'Full Name *',
-                hint: 'Contact name',
+                hint: 'Patient name',
                 controller: _nameCtrl,
                 textCapitalization: TextCapitalization.words,
                 autofocus: true,

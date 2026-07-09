@@ -23,146 +23,153 @@ class ProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DrColors.background,
-      appBar: AppBar(
-        backgroundColor: DrColors.primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => context.go('/home'),
-        ),
-        title: Text(
-          'PROFILE',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            fontSize: 18,
-            letterSpacing: 0.5,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go('/home');
+      },
+      child: Scaffold(
+        backgroundColor: DrColors.background,
+        appBar: AppBar(
+          backgroundColor: DrColors.primary,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => context.go('/home'),
           ),
+          title: Text(
+            'PROFILE',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              fontSize: 18,
+              letterSpacing: 0.5,
+            ),
+          ),
+          centerTitle: false,
         ),
-        centerTitle: false,
-      ),
-      body: GetBuilder<AuthCtrl>(
-        builder: (auth) {
-          final doctor = auth.currentDoctor;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(10, 16, 10, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Doctor card (tappable) ──────�
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: DrColors.primary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Center(
-                          child: Text(
-                            doctor?.initials ?? 'DR',
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
+        body: GetBuilder<AuthCtrl>(
+          builder: (auth) {
+            final doctor = auth.currentDoctor;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(10, 16, 10, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Doctor card (tappable) ──────�
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: DrColors.primary,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${doctor?.name ?? ''}',
+                          child: Center(
+                            child: Text(
+                              doctor?.initials ?? 'DR',
                               style: GoogleFonts.inter(
                                 fontSize: 18,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
-                            Text(
-                              doctor?.specialization ?? '',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                //  ),
-                //   ),
-                // ),
-                const SizedBox(height: 20),
-
-                // ── Menu items ───────────────────────────────────
-                _MenuItem(
-                  icon: Icons.privacy_tip_outlined,
-                  label: 'Privacy Policy',
-                  subtitle: 'Read our privacy policy',
-                  onTap: () => launchUrlString(
-                    'https://www.luxorhospital.com/privacy-policy.html',
-                    mode: LaunchMode.externalApplication,
-                  ),
-                ),
-                _MenuItem(
-                  icon: Icons.description_outlined,
-                  label: 'Terms & Conditions',
-                  subtitle: 'Read our terms of service',
-                  onTap: () => launchUrlString(
-                    'https://www.luxorhospital.com/privacy-policy.html',
-                    mode: LaunchMode.externalApplication,
-                  ),
-                ),
-                // const SizedBox(height: 4),
-                _LogoutMenuItem(auth: auth),
-                const SizedBox(height: 32),
-                Center(
-                  child: RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: DrColors.textSecondary,
-                      ),
-                      children: [
-                        const TextSpan(text: 'Developed by '),
-                        TextSpan(
-                          text: 'Diwizon',
-                          style: const TextStyle(
-                            decoration: TextDecoration.underline,
-                            fontWeight: FontWeight.w600,
-                            color: DrColors.primary,
                           ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => launchUrlString(
-                              'https://diwizon.com',
-                              mode: LaunchMode.externalApplication,
-                            ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${doctor?.name ?? ''}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                doctor?.specialization ?? '',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          );
-        },
+
+                  //  ),
+                  //   ),
+                  // ),
+                  const SizedBox(height: 20),
+
+                  // ── Menu items ───────────────────────────────────
+                  _MenuItem(
+                    icon: Icons.privacy_tip_outlined,
+                    label: 'Privacy Policy',
+                    subtitle: 'Read our privacy policy',
+                    onTap: () => launchUrlString(
+                      'https://www.luxorhospital.com/privacy-policy.html',
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                  _MenuItem(
+                    icon: Icons.description_outlined,
+                    label: 'Terms & Conditions',
+                    subtitle: 'Read our terms of service',
+                    onTap: () => launchUrlString(
+                      'https://www.luxorhospital.com/privacy-policy.html',
+                      mode: LaunchMode.externalApplication,
+                    ),
+                  ),
+                  // const SizedBox(height: 4),
+                  _LogoutMenuItem(auth: auth),
+                  const SizedBox(height: 32),
+                  Center(
+                    child: RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: DrColors.textSecondary,
+                        ),
+                        children: [
+                          const TextSpan(text: 'Developed by '),
+                          TextSpan(
+                            text: 'Diwizon',
+                            style: const TextStyle(
+                              decoration: TextDecoration.underline,
+                              fontWeight: FontWeight.w600,
+                              color: DrColors.primary,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () => launchUrlString(
+                                'https://diwizon.com',
+                                mode: LaunchMode.externalApplication,
+                              ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -387,7 +394,12 @@ class _DoctorPickerSheet extends StatelessWidget {
         color: DrColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        16 + MediaQuery.of(context).padding.bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -28,7 +28,7 @@ class _SplashViewState extends State<SplashView> {
       backgroundColor: Colors.white,
       body: Center(
         child: Image(
-          image: AssetImage('assets/luxor_logo.png'),
+          image: AssetImage('assets/blue-logo.png'),
           width: 200,
         ),
       ),
