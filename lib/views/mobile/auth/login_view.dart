@@ -67,8 +67,8 @@ class _LoginViewState extends State<LoginView> {
                 Hero(
                   tag: 'logo',
                   child: Image.asset(
-                    'assets/luxor_logo.png',
-                    height: 58,
+                    'assets/blue-logo.png',
+                    height: 45,
                     fit: BoxFit.contain,
                   ),
                 ),
