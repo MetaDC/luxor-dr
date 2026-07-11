@@ -655,3 +655,316 @@ class _ClockHandPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FullScreenDateRangePicker
+// ─────────────────────────────────────────────────────────────────────────────
+
+class FullScreenDateRangePicker extends StatefulWidget {
+  final DateTimeRange? initialRange;
+  const FullScreenDateRangePicker({super.key, this.initialRange});
+
+  @override
+  State<FullScreenDateRangePicker> createState() => _FullScreenDateRangePickerState();
+}
+
+class _FullScreenDateRangePickerState extends State<FullScreenDateRangePicker> {
+  DateTime? _startDate;
+  DateTime? _endDate;
+  late List<DateTime> _months;
+  late ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialRange != null) {
+      _startDate = widget.initialRange!.start;
+      _endDate = widget.initialRange!.end;
+    }
+
+    final now = DateTime.now();
+    final base = DateTime(now.year, now.month, 1);
+    _months = List.generate(12, (i) {
+      return DateTime(base.year, base.month + i, 1);
+    });
+
+    final targetDate = _startDate ?? now;
+    final index = _months.indexWhere(
+      (m) => m.year == targetDate.year && m.month == targetDate.month,
+    );
+    final initialOffset = index != -1 ? index * 280.0 : 0.0;
+    _scrollController = ScrollController(initialScrollOffset: initialOffset);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+
+
+  void _onDayTap(DateTime date) {
+    setState(() {
+      if (_startDate == null || (_startDate != null && _endDate != null)) {
+        _startDate = date;
+        _endDate = null;
+      } else if (date.isBefore(_startDate!)) {
+        _startDate = date;
+      } else {
+        _endDate = date;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canSave = _startDate != null;
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1B2260),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Select Range',
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: canSave
+                ? () {
+                    final start = _startDate!;
+                    final end = _endDate ?? start;
+                    Navigator.pop(context, DateTimeRange(start: start, end: end));
+                  }
+                : null,
+            child: Text(
+              'SAVE',
+              style: GoogleFonts.inter(
+                color: canSave ? Colors.white : Colors.white60,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Selected Range Preview Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            color: const Color(0xFF1B2260).withOpacity(0.04),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'START DATE',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: DrColors.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _startDate == null
+                          ? 'Select date'
+                          : DateFormat('EEE, MMM d').format(_startDate!),
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _startDate == null ? DrColors.textTertiary : DrColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                Icon(Icons.arrow_forward_rounded, color: DrColors.textTertiary, size: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'END DATE',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: DrColors.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _endDate == null
+                          ? (_startDate == null ? 'Select date' : DateFormat('EEE, MMM d').format(_startDate!))
+                          : DateFormat('EEE, MMM d').format(_endDate!),
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _startDate == null ? DrColors.textTertiary : DrColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              itemCount: _months.length,
+              itemBuilder: (context, idx) {
+                final m = _months[idx];
+                return _MonthCalendarRangeItem(
+                  monthDate: m,
+                  startDate: _startDate,
+                  endDate: _endDate,
+                  onDayTap: _onDayTap,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MonthCalendarRangeItem extends StatelessWidget {
+  final DateTime monthDate;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final ValueChanged<DateTime> onDayTap;
+
+  const _MonthCalendarRangeItem({
+    required this.monthDate,
+    required this.startDate,
+    required this.endDate,
+    required this.onDayTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final daysInMonth = DateTime(monthDate.year, monthDate.month + 1, 0).day;
+    final firstWeekday = DateTime(monthDate.year, monthDate.month, 1).weekday;
+    final offset = firstWeekday == 7 ? 0 : firstWeekday; // Sunday is index 0
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Text(
+              DateFormat('MMMM yyyy').format(monthDate),
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: DrColors.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Day initials header row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) {
+              return SizedBox(
+                width: 32,
+                child: Center(
+                  child: Text(
+                    day,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: DrColors.textTertiary,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+          // Days grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemCount: daysInMonth + offset,
+            itemBuilder: (ctx, index) {
+              if (index < offset) {
+                return const SizedBox.shrink();
+              }
+              final day = index - offset + 1;
+              final dayDate = DateTime(monthDate.year, monthDate.month, day);
+
+              bool isStart = false;
+              bool isEnd = false;
+              bool isInRange = false;
+
+              if (startDate != null) {
+                isStart = dayDate.year == startDate!.year &&
+                    dayDate.month == startDate!.month &&
+                    dayDate.day == startDate!.day;
+
+                if (endDate != null) {
+                  isEnd = dayDate.year == endDate!.year &&
+                      dayDate.month == endDate!.month &&
+                      dayDate.day == endDate!.day;
+
+                  isInRange = dayDate.isAfter(startDate!) && dayDate.isBefore(endDate!);
+                }
+              }
+
+              final isSelected = isStart || isEnd;
+
+              return GestureDetector(
+                onTap: () => onDayTap(dayDate),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF1B2260)
+                        : (isInRange
+                            ? const Color(0xFF1B2260).withOpacity(0.08)
+                            : Colors.transparent),
+                    shape: isSelected ? BoxShape.circle : BoxShape.rectangle,
+                    borderRadius: isSelected
+                        ? null
+                        : (isInRange ? BorderRadius.circular(4) : null),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$day',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected
+                            ? Colors.white
+                            : (isInRange ? const Color(0xFF1B2260) : DrColors.textPrimary),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}

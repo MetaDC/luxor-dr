@@ -45,8 +45,6 @@ class HomeCtrl extends GetxController {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _patientsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _appointmentsStream;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _meetingsStream;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _todayApptsStream;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _todayMtgsStream;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _settingsSub;
   Timer? _clockTimer;
 
@@ -145,8 +143,6 @@ class HomeCtrl extends GetxController {
     _patientsStream?.cancel();
     _appointmentsStream?.cancel();
     _meetingsStream?.cancel();
-    _todayApptsStream?.cancel();
-    _todayMtgsStream?.cancel();
     _clockTimer?.cancel();
     _clockTimer = null;
     patientsCount = 0;
@@ -388,8 +384,6 @@ class HomeCtrl extends GetxController {
     _patientsStream?.cancel();
     _appointmentsStream?.cancel();
     _meetingsStream?.cancel();
-    _todayApptsStream?.cancel();
-    _todayMtgsStream?.cancel();
     _clockTimer?.cancel();
     _clockTimer = null;
     patients.clear();
@@ -402,42 +396,48 @@ class HomeCtrl extends GetxController {
     _launchStreams(doctorId);
   }
 
-  // ─── Today-scoped real-time streams (midnight → 23:59:59) ─────────────────
+  // ─── Today-scoped count queries (midnight → 23:59:59) ──────────────────────
 
-  void getTodayAppointments(String doctorId) {
-    _todayApptsStream?.cancel();
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day);
-    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    _todayApptsStream = FBFireStore.apptAndMeeting
-        .where('doctorId', isEqualTo: doctorId)
-        .where('docType', isEqualTo: 'appointment')
-        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('startTime', isLessThanOrEqualTo: Timestamp.fromDate(end))
-        .orderBy('startTime')
-        .snapshots()
-        .listen((event) {
-          todayAppointmentsCount = event.docs.length;
-          update();
-        }, onError: (e) => debugPrint(e.toString()));
+  Future<void> getTodayAppointments(String doctorId) async {
+    try {
+      final now = DateTime.now();
+      final start = DateTime(now.year, now.month, now.day);
+      final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      final aggregateQuery = await FBFireStore.apptAndMeeting
+          .where('doctorId', isEqualTo: doctorId)
+          .where('docType', isEqualTo: 'appointment')
+          .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+          .where('startTime', isLessThanOrEqualTo: Timestamp.fromDate(end))
+          .count()
+          .get();
+
+      todayAppointmentsCount = aggregateQuery.count ?? 0;
+      update();
+    } catch (e) {
+      debugPrint('Failed to get today appointments count: $e');
+    }
   }
 
-  void getTodayMeetings(String doctorId) {
-    _todayMtgsStream?.cancel();
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day);
-    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    _todayMtgsStream = FBFireStore.apptAndMeeting
-        .where('doctorId', isEqualTo: doctorId)
-        .where('docType', isEqualTo: 'meeting')
-        .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('startTime', isLessThanOrEqualTo: Timestamp.fromDate(end))
-        .orderBy('startTime')
-        .snapshots()
-        .listen((event) {
-          todayMeetingsCount = event.docs.length;
-          update();
-        }, onError: (e) => debugPrint(e.toString()));
+  Future<void> getTodayMeetings(String doctorId) async {
+    try {
+      final now = DateTime.now();
+      final start = DateTime(now.year, now.month, now.day);
+      final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      final aggregateQuery = await FBFireStore.apptAndMeeting
+          .where('doctorId', isEqualTo: doctorId)
+          .where('docType', isEqualTo: 'meeting')
+          .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+          .where('startTime', isLessThanOrEqualTo: Timestamp.fromDate(end))
+          .count()
+          .get();
+
+      todayMeetingsCount = aggregateQuery.count ?? 0;
+      update();
+    } catch (e) {
+      debugPrint('Failed to get today meetings count: $e');
+    }
   }
 
   Future<bool> completeMeeting({

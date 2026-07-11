@@ -17,72 +17,111 @@ import 'meetings/meeting_form.dart';
 // HomeView
 // ─────────────────────────────────────────────────────────────────────────────
 
-class HomeView extends StatelessWidget {
+class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: DrColors.background,
-      body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
-        ),
-        child: GetBuilder<HomeCtrl>(
-          builder: (ctrl) {
-            return CustomScrollView(
-              slivers: [
-                // Top Blue Container
-                const SliverToBoxAdapter(child: _TopHeaderSection()),
+  State<HomeView> createState() => _HomeViewState();
+}
 
-                // ── Today stats + Quick actions ────────────────────
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionLabel(label: "TODAY'S SCHEDULE"),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _StatCard(
-                                icon: Icons.calendar_today_rounded,
-                                color: DrColors.primary,
-                                count: ctrl.todayAppointmentsCount,
-                                label: 'Appointments',
-                                onTap: () => context.go(
-                                  '/home/schedule?filter=appointment',
+class _HomeViewState extends State<HomeView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+      if (doctorId.isNotEmpty) {
+        HomeCtrl.to.getTodayAppointments(doctorId);
+        HomeCtrl.to.getTodayMeetings(doctorId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: DrColors.background,
+        appBar: AppBar(
+          backgroundColor: DrColors.primary,
+          centerTitle: false,
+          title: const Image(
+            image: AssetImage('assets/orange-logo.png'),
+            height: 25,
+          ),
+
+          actions: [
+            IconButton(
+              icon: const Icon(
+                Icons.account_circle_outlined,
+                color: Colors.white,
+                // size: 30,
+              ),
+              onPressed: () => context.go('/home/profile'),
+            ),
+          ],
+        ),
+        body: SizedBox(
+          child: GetBuilder<HomeCtrl>(
+            builder: (ctrl) {
+              return CustomScrollView(
+                slivers: [
+                  // Top Blue Container
+                  // const SliverToBoxAdapter(child: _TopHeaderSection()),
+
+                  // ── Today stats + Quick actions ────────────────────
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SectionLabel(label: "TODAY'S SCHEDULE"),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _StatCard(
+                                  icon: Icons.calendar_today_rounded,
+                                  color: DrColors.primary,
+                                  count: ctrl.todayAppointmentsCount,
+                                  label: 'Appointments',
+                                  onTap: () => context.go(
+                                    '/home/schedule?filter=appointment',
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _StatCard(
-                                icon: Icons.groups_rounded,
-                                color: DrColors.accent,
-                                count: ctrl.todayMeetingsCount,
-                                label: 'Tasks',
-                                onTap: () =>
-                                    context.go('/home/schedule?filter=meeting'),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _StatCard(
+                                  icon: Icons.groups_rounded,
+                                  color: DrColors.accent,
+                                  count: ctrl.todayMeetingsCount,
+                                  label: 'Tasks',
+                                  onTap: () => context.go(
+                                    '/home/schedule?filter=meeting',
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        _RaySection(parentContext: context),
-                        const SizedBox(height: 24),
-                        _QuickActions(parentContext: context),
-                      ],
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          _RaySection(parentContext: context),
+                          const SizedBox(height: 24),
+                          _QuickActions(parentContext: context),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -904,7 +943,7 @@ class _TopHeaderSection extends StatelessWidget {
                 icon: const Icon(
                   Icons.account_circle_outlined,
                   color: Colors.white,
-                  size: 30,
+                  // size: 30,
                 ),
                 onPressed: () => context.go('/home/profile'),
               ),
@@ -940,7 +979,7 @@ class _TopHeaderSection extends StatelessWidget {
               letterSpacing: 1,
             ),
           ), */
-          const SizedBox(height: 24),
+          const SizedBox(height: 10),
           // // Tabs
           // const Row(
           //   children: [

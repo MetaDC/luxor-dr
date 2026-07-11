@@ -61,14 +61,17 @@ class _ContactsViewState extends State<ContactsView> {
   final ScrollController _scrollController = ScrollController();
   String _query = '';
 
-  final List<StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
-  _pageSubs = [];
   final List<List<PatientModel>> _pages = [];
   final List<DocumentSnapshot?> _pageBoundaryDocs = [];
   bool _loading = false;
   bool _hasMore = true;
   static const int _pageSize = 20;
   Timer? _debounceTimer;
+
+  DocumentSnapshot? _lastDocQ1;
+  DocumentSnapshot? _lastDocQ2;
+  DocumentSnapshot? _lastDocQ3;
+  DocumentSnapshot? _lastDocQ4;
 
   @override
   void initState() {
@@ -81,7 +84,6 @@ class _ContactsViewState extends State<ContactsView> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _cancelAllSubs();
     _searchCtrl.removeListener(_onSearchChanged);
     _searchCtrl.dispose();
     _scrollController.dispose();
@@ -96,10 +98,10 @@ class _ContactsViewState extends State<ContactsView> {
       if (_query.isEmpty) return;
       setState(() {
         _query = '';
-        _cancelAllSubs();
         _pages.clear();
         _pageBoundaryDocs.clear();
         _hasMore = true;
+        _resetSearchDocs();
       });
       _loadPage(0);
     } else if (cleanVal.length >= 3) {
@@ -108,15 +110,22 @@ class _ContactsViewState extends State<ContactsView> {
         if (mounted) {
           setState(() {
             _query = cleanVal;
-            _cancelAllSubs();
             _pages.clear();
             _pageBoundaryDocs.clear();
             _hasMore = true;
+            _resetSearchDocs();
           });
           _loadPage(0);
         }
       });
     }
+  }
+
+  void _resetSearchDocs() {
+    _lastDocQ1 = null;
+    _lastDocQ2 = null;
+    _lastDocQ3 = null;
+    _lastDocQ4 = null;
   }
 
   void _onScroll() {
@@ -133,94 +142,152 @@ class _ContactsViewState extends State<ContactsView> {
     if (mounted) setState(() => _loading = true);
 
     if (_query.isEmpty) {
-      Query<Map<String, dynamic>> query = FBFireStore.patients.orderBy(
-        'lowerName',
-      );
-      if (pageIndex > 0 && _pageBoundaryDocs.length >= pageIndex) {
-        final prevDoc = _pageBoundaryDocs[pageIndex - 1];
-        if (prevDoc != null) {
-          query = query.startAfterDocument(prevDoc);
+      try {
+        Query<Map<String, dynamic>> query = FBFireStore.patients.orderBy(
+          'lowerName',
+        );
+        if (pageIndex > 0 && _pageBoundaryDocs.length >= pageIndex) {
+          final prevDoc = _pageBoundaryDocs[pageIndex - 1];
+          if (prevDoc != null) {
+            query = query.startAfterDocument(prevDoc);
+          }
+        }
+        query = query.limit(_pageSize);
+
+        final snapshot = await query.get();
+        final items = snapshot.docs
+            .map(PatientModel.fromQueryDocumentSnapshot)
+            .toList();
+
+        if (mounted) {
+          setState(() {
+            if (pageIndex < _pages.length) {
+              _pages[pageIndex] = items;
+            } else {
+              _pages.add(items);
+            }
+
+            final boundaryDoc = snapshot.docs.isNotEmpty
+                ? snapshot.docs.last
+                : null;
+            if (pageIndex < _pageBoundaryDocs.length) {
+              _pageBoundaryDocs[pageIndex] = boundaryDoc;
+            } else {
+              _pageBoundaryDocs.add(boundaryDoc);
+            }
+
+            _hasMore = items.length == _pageSize;
+            _loading = false;
+          });
+        }
+      } catch (e) {
+        debugPrint('Failed to load page: $e');
+        if (mounted) {
+          setState(() => _loading = false);
         }
       }
-      query = query.limit(_pageSize);
-
-      final sub = query.snapshots().listen(
-        (snapshot) {
-          final items = snapshot.docs
-              .map(PatientModel.fromQueryDocumentSnapshot)
-              .toList();
-
-          if (pageIndex < _pages.length) {
-            _pages[pageIndex] = items;
-          } else {
-            _pages.add(items);
-          }
-
-          final boundaryDoc = snapshot.docs.isNotEmpty
-              ? snapshot.docs.last
-              : null;
-          if (pageIndex < _pageBoundaryDocs.length) {
-            _pageBoundaryDocs[pageIndex] = boundaryDoc;
-          } else {
-            _pageBoundaryDocs.add(boundaryDoc);
-          }
-
-          _hasMore = items.length == _pageSize;
-
-          if (mounted) {
-            setState(() {
-              _loading = false;
-            });
-          }
-        },
-        onError: (e) {
-          if (mounted) {
-            setState(() => _loading = false);
-          }
-        },
-      );
-
-      _pageSubs.add(sub);
     } else {
       try {
-        final q1 = FBFireStore.patients
+        Query<Map<String, dynamic>> q1 = FBFireStore.patients
             .where('combinationNames', arrayContains: _query)
-            .get();
-        final q2 = FBFireStore.patients
+            .limit(_pageSize);
+        Query<Map<String, dynamic>> q2 = FBFireStore.patients
             .where('email', isGreaterThanOrEqualTo: _query)
             .where('email', isLessThanOrEqualTo: '$_query\uf8ff')
-            .get();
-        final q3 = FBFireStore.patients
+            .limit(_pageSize);
+        Query<Map<String, dynamic>> q3 = FBFireStore.patients
             .where('phone', isGreaterThanOrEqualTo: _query)
             .where('phone', isLessThanOrEqualTo: '$_query\uf8ff')
-            .get();
-        final q4 = FBFireStore.patients
+            .limit(_pageSize);
+        Query<Map<String, dynamic>> q4 = FBFireStore.patients
             .where('phoneNumber', isGreaterThanOrEqualTo: _query)
             .where('phoneNumber', isLessThanOrEqualTo: '$_query\uf8ff')
-            .get();
+            .limit(_pageSize);
 
-        final snaps = await Future.wait([q1, q2, q3, q4]);
+        if (pageIndex > 0) {
+          if (_lastDocQ1 != null) q1 = q1.startAfterDocument(_lastDocQ1!);
+          if (_lastDocQ2 != null) q2 = q2.startAfterDocument(_lastDocQ2!);
+          if (_lastDocQ3 != null) q3 = q3.startAfterDocument(_lastDocQ3!);
+          if (_lastDocQ4 != null) q4 = q4.startAfterDocument(_lastDocQ4!);
+        }
+
+        final Future<QuerySnapshot<Map<String, dynamic>>?> f1 =
+            (pageIndex == 0 || _lastDocQ1 != null)
+            ? q1.get()
+            : Future.value(null);
+        final Future<QuerySnapshot<Map<String, dynamic>>?> f2 =
+            (pageIndex == 0 || _lastDocQ2 != null)
+            ? q2.get()
+            : Future.value(null);
+        final Future<QuerySnapshot<Map<String, dynamic>>?> f3 =
+            (pageIndex == 0 || _lastDocQ3 != null)
+            ? q3.get()
+            : Future.value(null);
+        final Future<QuerySnapshot<Map<String, dynamic>>?> f4 =
+            (pageIndex == 0 || _lastDocQ4 != null)
+            ? q4.get()
+            : Future.value(null);
+
+        final snaps = await Future.wait([f1, f2, f3, f4]);
+        final snap1 = snaps[0];
+        final snap2 = snaps[1];
+        final snap3 = snaps[2];
+        final snap4 = snaps[3];
 
         final uniquePatients = <String, PatientModel>{};
-        for (final snap in snaps) {
-          for (final doc in snap.docs) {
+
+        if (snap1 != null) {
+          _lastDocQ1 = snap1.docs.isNotEmpty ? snap1.docs.last : null;
+          for (final doc in snap1.docs) {
             final model = PatientModel.fromQueryDocumentSnapshot(doc);
             uniquePatients[model.docId] = model;
           }
         }
+        if (snap2 != null) {
+          _lastDocQ2 = snap2.docs.isNotEmpty ? snap2.docs.last : null;
+          for (final doc in snap2.docs) {
+            final model = PatientModel.fromQueryDocumentSnapshot(doc);
+            uniquePatients[model.docId] = model;
+          }
+        }
+        if (snap3 != null) {
+          _lastDocQ3 = snap3.docs.isNotEmpty ? snap3.docs.last : null;
+          for (final doc in snap3.docs) {
+            final model = PatientModel.fromQueryDocumentSnapshot(doc);
+            uniquePatients[model.docId] = model;
+          }
+        }
+        if (snap4 != null) {
+          _lastDocQ4 = snap4.docs.isNotEmpty ? snap4.docs.last : null;
+          for (final doc in snap4.docs) {
+            final model = PatientModel.fromQueryDocumentSnapshot(doc);
+            uniquePatients[model.docId] = model;
+          }
+        }
+
+        final existingIds = _allLoadedPatients.map((p) => p.docId).toSet();
+        uniquePatients.removeWhere((id, _) => existingIds.contains(id));
 
         final results = uniquePatients.values.toList();
         results.sort(
           (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
         );
 
-        _hasMore = false; // Search results are not paginated
+        final limitedResults = results.take(_pageSize).toList();
+
+        final bool q1HasMore = snap1 != null && snap1.docs.length == _pageSize;
+        final bool q2HasMore = snap2 != null && snap2.docs.length == _pageSize;
+        final bool q3HasMore = snap3 != null && snap3.docs.length == _pageSize;
+        final bool q4HasMore = snap4 != null && snap4.docs.length == _pageSize;
+        _hasMore = q1HasMore || q2HasMore || q3HasMore || q4HasMore;
 
         if (mounted) {
           setState(() {
-            _pages.clear();
-            _pages.add(results);
-            _pageBoundaryDocs.clear();
+            if (pageIndex < _pages.length) {
+              _pages[pageIndex] = limitedResults;
+            } else {
+              _pages.add(limitedResults);
+            }
             _loading = false;
           });
         }
@@ -231,13 +298,6 @@ class _ContactsViewState extends State<ContactsView> {
         }
       }
     }
-  }
-
-  void _cancelAllSubs() {
-    for (final sub in _pageSubs) {
-      sub.cancel();
-    }
-    _pageSubs.clear();
   }
 
   List<PatientModel> get _allLoadedPatients {
@@ -277,7 +337,7 @@ class _ContactsViewState extends State<ContactsView> {
             onPressed: () => context.go('/home'),
           ),
           title: Text(
-            'Pateints',
+            'Patients',
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w700,
               color: Colors.white,
@@ -383,12 +443,12 @@ class _ContactsViewState extends State<ContactsView> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      // const SizedBox(height: 10),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 8),
+                // const SizedBox(height: 8),
 
                 // ── List ────────────────────────────────────────────
                 Expanded(
@@ -396,7 +456,7 @@ class _ContactsViewState extends State<ContactsView> {
                       ? _EmptyState(hasSearch: _query.isNotEmpty)
                       : ListView.separated(
                           controller: _scrollController,
-                          padding: const EdgeInsets.fromLTRB(10, 4, 10, 32),
+                          padding: const EdgeInsets.fromLTRB(10, 14, 10, 32),
                           itemCount: visible.length + (_hasMore ? 1 : 0),
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 12),

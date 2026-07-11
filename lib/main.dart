@@ -131,11 +131,13 @@ void main() async {
   Get.put(AuthCtrl());
   Get.put(HomeCtrl());
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    statusBarBrightness: Brightness.light,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+    ),
+  );
 
   runApp(const LuxorDrApp());
 }
@@ -196,4 +198,3 @@ const DarwinNotificationDetails iOSPlatformChannelSpecifics =
       presentBadge: true,
       presentSound: true,
     );
-

@@ -26,7 +26,8 @@ const _meetingTypes = [
 
 class MeetingFormSheet extends StatefulWidget {
   final AppointmentMeetingModel? meeting;
-  const MeetingFormSheet({super.key, this.meeting});
+  final MeetingPersonModel? initialPerson;
+  const MeetingFormSheet({super.key, this.meeting, this.initialPerson});
 
   @override
   State<MeetingFormSheet> createState() => _MeetingFormSheetState();
@@ -85,6 +86,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
   @override
   void initState() {
     super.initState();
+    _person = widget.initialPerson;
     _prefill();
 
     if (_date == null) {

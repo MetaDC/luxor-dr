@@ -25,7 +25,8 @@ const _apptTypes = [
 
 class AppointmentFormSheet extends StatefulWidget {
   final AppointmentMeetingModel? appointment;
-  const AppointmentFormSheet({super.key, this.appointment});
+  final PatientModel? initialPatient;
+  const AppointmentFormSheet({super.key, this.appointment, this.initialPatient});
 
   @override
   State<AppointmentFormSheet> createState() => _AppointmentFormSheetState();
@@ -83,6 +84,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   @override
   void initState() {
     super.initState();
+    _patient = widget.initialPatient;
     _prefill();
 
     if (_date == null) {

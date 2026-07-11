@@ -614,7 +614,7 @@ class _MeetingCard extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              'History',
+                              'Record',
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -1019,62 +1019,53 @@ class _StatusUpdateSheet extends StatefulWidget {
 }
 
 class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
-  final _reasonCtrl = TextEditingController();
-  final _summaryCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
   bool _loading = false;
-  String? _chosen;
+  String? _submittingAction; // 'Completed' or 'Cancelled'
 
   @override
   void dispose() {
-    _reasonCtrl.dispose();
-    _summaryCtrl.dispose();
+    _notesCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (_chosen == null) return;
+  Future<void> _submit(String action) async {
     final ctrl = HomeCtrl.to;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _submittingAction = action;
+    });
     bool ok;
-    if (_chosen == 'Completed') {
+    final noteText = _notesCtrl.text.trim();
+    if (action == 'Completed') {
       if (widget.docType == 'appointment') {
         ok = await ctrl.completeAppointment(
           docId: widget.docId,
-          summary: _summaryCtrl.text.trim(),
+          summary: noteText,
         );
       } else {
-        ok = await ctrl.completeMeeting(
-          docId: widget.docId,
-          summary: _summaryCtrl.text.trim(),
-        );
+        ok = await ctrl.completeMeeting(docId: widget.docId, summary: noteText);
       }
     } else {
-      // if (_reasonCtrl.text.trim().isEmpty) {
-      //   setState(() => _loading = false);
-      //   AppSnackbar.error(context, 'Please enter a cancellation reason.');
-      //   return;
-      // }
       if (widget.docType == 'appointment') {
         ok = await ctrl.cancelAppointment(
           docId: widget.docId,
-          reason: _reasonCtrl.text.trim(),
+          reason: noteText,
         );
       } else {
-        ok = await ctrl.cancelMeeting(
-          docId: widget.docId,
-          reason: _reasonCtrl.text.trim(),
-        );
+        ok = await ctrl.cancelMeeting(docId: widget.docId, reason: noteText);
       }
     }
     if (!mounted) return;
-    setState(() => _loading = false);
+    setState(() {
+      _loading = false;
+      _submittingAction = null;
+    });
     if (ok) {
       Navigator.pop(context);
       widget.onDone();
-      AppSnackbar.success(
-        context,
-        '${widget.docType == 'appointment' ? 'Appointment' : 'Meeting'} marked as $_chosen.',
-      );
+      final label = widget.docType == 'appointment' ? 'Appointment' : 'Task';
+      AppSnackbar.success(context, '$label marked as $action.');
     } else {
       AppSnackbar.error(context, 'Something went wrong. Please try again.');
     }
@@ -1083,13 +1074,21 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final isAppt = widget.docType == 'appointment';
+    final label = isAppt ? 'appointment' : 'task';
+
     return Container(
       margin: const EdgeInsets.only(top: 80),
       decoration: const BoxDecoration(
         color: DrColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.fromLTRB(20, 20, 20, bottom + 16 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        bottom + 16 + MediaQuery.of(context).padding.bottom,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1116,106 +1115,49 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Select the new status for this ${widget.docType}.',
+              'Enter notes and choose to cancel or complete this $label.',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: DrColors.textSecondary,
               ),
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatusChoiceCard(
-                    label: 'Completed',
-                    icon: Icons.check_circle_rounded,
-                    color: DrColors.success,
-                    selected: _chosen == 'Completed',
-                    onTap: () => setState(() => _chosen = 'Completed'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatusChoiceCard(
-                    label: 'Cancelled',
-                    icon: Icons.cancel_rounded,
-                    color: DrColors.error,
-                    selected: _chosen == 'Cancelled',
-                    onTap: () => setState(() => _chosen = 'Cancelled'),
-                  ),
-                ),
-              ],
+            Text(
+              'Notes (optional)',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: DrColors.textSecondary,
+              ),
             ),
-            if (_chosen == 'Completed') ...[
-              const SizedBox(height: 16),
-              Text(
-                'Summary (optional)',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: DrColors.textSecondary,
-                ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _notesCtrl,
+              maxLines: 4,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: DrColors.textPrimary,
               ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _summaryCtrl,
-                maxLines: 3,
-                style: GoogleFonts.inter(
+              decoration: InputDecoration(
+                hintText: 'Enter notes here...',
+                hintStyle: GoogleFonts.inter(
                   fontSize: 14,
-                  color: DrColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Brief summary...',
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: DrColors.textTertiary,
-                  ),
-                ),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
-            if (_chosen == 'Cancelled') ...[
-              const SizedBox(height: 16),
-              Text(
-                'Cancellation Reason (optional)',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: DrColors.textSecondary,
+                  color: DrColors.textTertiary,
                 ),
               ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _reasonCtrl,
-                maxLines: 3,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: DrColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Reason for cancellation...',
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: DrColors.textTertiary,
-                  ),
-                ),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
+              textCapitalization: TextCapitalization.sentences,
+            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: (_chosen == null || _loading) ? null : _submit,
+                onPressed: _loading ? null : () => _submit('Completed'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _chosen == 'Cancelled'
-                      ? DrColors.error
-                      : _chosen == 'Completed'
-                      ? DrColors.success
-                      : DrColors.accent,
+                  backgroundColor: DrColors.success,
+                  foregroundColor: Colors.white,
                 ),
-                child: _loading
+                child: _loading && _submittingAction == 'Completed'
                     ? const SizedBox(
                         width: 22,
                         height: 22,
@@ -1224,63 +1166,29 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
                           strokeWidth: 2.5,
                         ),
                       )
-                    : Text(
-                        _chosen == null
-                            ? 'Select a Status'
-                            : 'Mark as $_chosen',
-                      ),
+                    : const Text('Complete'),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusChoiceCard extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-  const _StatusChoiceCard({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.10) : DrColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? color : DrColors.border,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 28,
-              color: selected ? color : DrColors.textTertiary,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected ? color : DrColors.textSecondary,
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _loading ? null : () => _submit('Cancelled'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: DrColors.error,
+                  foregroundColor: Colors.white,
+                ),
+                child: _loading && _submittingAction == 'Cancelled'
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : const Text('Cancel'),
               ),
             ),
           ],

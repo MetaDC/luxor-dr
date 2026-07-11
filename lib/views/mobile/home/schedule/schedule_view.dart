@@ -40,6 +40,13 @@ class _ScheduleViewState extends State<ScheduleView> {
   late _TypeFilter _typeFilter;
 
   final ScrollController _scrollController = ScrollController();
+
+  // PageView weeks integration
+  late final DateTime _baseMonday;
+  late DateTime _visibleWeekMonday;
+  late final PageController _pageController;
+  bool _isPageAnimating = false;
+
   DocumentSnapshot? _lastDoc;
   bool _hasMore = true;
   bool _isLoadingMore = false;
@@ -51,21 +58,42 @@ class _ScheduleViewState extends State<ScheduleView> {
 
   static const _statuses = ['Scheduled', 'Completed', 'Cancelled', 'All'];
 
-  List<DateTime> _weekDates() {
-    // Find Monday of the week containing _selectedDate (weekday: 1=Mon … 7=Sun)
-    final monday = _selectedDate.subtract(
-      Duration(days: _selectedDate.weekday - 1),
+  void _updateSelectedDate(DateTime date) {
+    final targetMonday = date.subtract(Duration(days: date.weekday - 1));
+    final targetMondayClean = DateTime(
+      targetMonday.year,
+      targetMonday.month,
+      targetMonday.day,
     );
-    return List.generate(7, (i) {
-      final d = monday.add(Duration(days: i));
-      return DateTime(d.year, d.month, d.day);
+
+    setState(() {
+      _selectedDate = DateTime(date.year, date.month, date.day);
+      _visibleWeekMonday = targetMondayClean;
     });
+
+    final weekDiff = (targetMondayClean.difference(_baseMonday).inDays / 7)
+        .round();
+    final targetPage = 5000 + weekDiff;
+
+    if (_pageController.hasClients &&
+        _pageController.page?.round() != targetPage) {
+      _isPageAnimating = true;
+      _pageController.jumpToPage(targetPage);
+      _isPageAnimating = false;
+    }
+
+    _fetchInitialSchedule();
   }
 
   @override
   void initState() {
     super.initState();
     _initFilters();
+    final now = _selectedDate;
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    _baseMonday = DateTime(monday.year, monday.month, monday.day);
+    _visibleWeekMonday = _baseMonday;
+    _pageController = PageController(initialPage: 5000);
     _scrollController.addListener(_onScroll);
     _fetchInitialSchedule();
   }
@@ -101,6 +129,7 @@ class _ScheduleViewState extends State<ScheduleView> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _pageController.dispose();
     _realtimeSub?.cancel();
     super.dispose();
   }
@@ -296,18 +325,22 @@ class _ScheduleViewState extends State<ScheduleView> {
       builder: (ctx) => VerticalCalendarDialog(initialDate: _selectedDate),
     );
     if (picked != null && mounted) {
-      setState(() {
-        _selectedDate = picked;
-      });
-      _fetchInitialSchedule();
+      _updateSelectedDate(picked);
     }
+  }
+
+  DateTime getStartOfWeek(DateTime date) {
+    return date.subtract(Duration(days: date.weekday - 1)); // Monday
+  }
+
+  List<DateTime> weekDays(DateTime start) {
+    return List.generate(7, (index) => start.add(Duration(days: index)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final dates = _weekDates();
     final filtered = _filtered;
-
+    final currentWeek = getStartOfWeek(DateTime.now());
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -324,7 +357,7 @@ class _ScheduleViewState extends State<ScheduleView> {
             onPressed: () => context.go('/home'),
           ),
           title: Text(
-            'SCHEDULE',
+            'CALENDAR',
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w700,
               color: Colors.white,
@@ -353,7 +386,9 @@ class _ScheduleViewState extends State<ScheduleView> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      DateFormat('MMM yy').format(_selectedDate).toUpperCase(),
+                      DateFormat(
+                        'MMM yy',
+                      ).format(_visibleWeekMonday).toUpperCase(),
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -374,12 +409,7 @@ class _ScheduleViewState extends State<ScheduleView> {
 
             if (!_isToday(_selectedDate))
               TextButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedDate = DateTime.now();
-                  });
-                  _fetchInitialSchedule();
-                },
+                onPressed: () => _updateSelectedDate(DateTime.now()),
                 child: Text(
                   'TODAY',
                   style: GoogleFonts.inter(
@@ -468,81 +498,95 @@ class _ScheduleViewState extends State<ScheduleView> {
                       );
                     },
                   ),
+
                   // ── Week Date Strip ──────────────────────────────
                   SizedBox(
                     height: 50,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: dates.length,
-                      separatorBuilder: (_, si) => const SizedBox(width: 6),
-                      itemBuilder: (_, i) {
-                        final d = dates[i];
-                        final now = DateTime.now();
-                        final isToday =
-                            d.year == now.year &&
-                            d.month == now.month &&
-                            d.day == now.day;
-                        final isSelected =
-                            d.year == _selectedDate.year &&
-                            d.month == _selectedDate.month &&
-                            d.day == _selectedDate.day;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() => _selectedDate = d);
-                            _fetchInitialSchedule();
-                          },
-                          child: Container(
-                            width: 46,
-                            color: Colors.transparent,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  DateFormat('EEE').format(d),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: isSelected
-                                        ? DrColors.textPrimary
-                                        : DrColors.textTertiary,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? DrColors.accent
-                                        : Colors.transparent,
-                                    shape: BoxShape.circle,
-                                    border: isToday && !isSelected
-                                        ? Border.all(
-                                            color: DrColors.accent,
-                                            width: 1.5,
-                                          )
-                                        : null,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${d.day}',
+                    child: PageView.builder(
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        if (_isPageAnimating) return;
+                        final newMonday = _baseMonday.add(
+                          Duration(days: (index - 5000) * 7),
+                        );
+                        setState(() {
+                          _visibleWeekMonday = newMonday;
+                        });
+                      },
+                      itemBuilder: (context, page) {
+                        final weekStart = currentWeek.add(
+                          Duration(days: (page - 5000) * 7),
+                        );
+
+                        final days = weekDays(weekStart);
+
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: days.map((day) {
+                            final now = DateTime.now();
+                            final isToday =
+                                day.year == now.year &&
+                                day.month == now.month &&
+                                day.day == now.day;
+                            final isSelected =
+                                day.year == _selectedDate.year &&
+                                day.month == _selectedDate.month &&
+                                day.day == _selectedDate.day;
+                            return Expanded(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => _updateSelectedDate(day),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      DateFormat('EEE').format(day),
                                       style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: 11,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
                                         color: isSelected
-                                            ? Colors.white
-                                            : isToday
-                                            ? DrColors.accent
-                                            : DrColors.textPrimary,
+                                            ? DrColors.textPrimary
+                                            : DrColors.textTertiary,
                                       ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? DrColors.accent
+                                            : Colors.transparent,
+                                        shape: BoxShape.circle,
+                                        border: isToday && !isSelected
+                                            ? Border.all(
+                                                color: DrColors.accent,
+                                                width: 1.5,
+                                              )
+                                            : null,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${day.day}',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : isToday
+                                                ? DrColors.accent
+                                                : DrColors.textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          }).toList(),
                         );
                       },
                     ),
@@ -550,7 +594,7 @@ class _ScheduleViewState extends State<ScheduleView> {
 
                   const SizedBox(height: 6),
 
-                  // ── Type filter (segmented) ──────────────────────
+                  /*  // ── Type filter (segmented) ──────────────────────
                   CupertinoSlidingSegmentedControl<_TypeFilter>(
                     groupValue: _typeFilter,
                     onValueChanged: (v) {
@@ -562,8 +606,8 @@ class _ScheduleViewState extends State<ScheduleView> {
                     padding: const EdgeInsets.all(3),
                     backgroundColor: Colors.white,
                     thumbColor: _typeFilter == _TypeFilter.meetings
-                        ? DrColors.accent.withValues(alpha: 0.7)
-                        : DrColors.primary.withValues(alpha: 0.7),
+                        ? DrColors.accent
+                        : DrColors.primary,
 
                     children: {
                       _TypeFilter.all: Padding(
@@ -617,9 +661,9 @@ class _ScheduleViewState extends State<ScheduleView> {
                     },
                   ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 6), */
 
-                  // ── Status filter chips ──────────────────────────
+                  /*       // ── Status filter chips ──────────────────────────
                   SizedBox(
                     height: 26,
                     child: ListView.separated(
@@ -648,9 +692,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: active
-                                  ? color.withValues(alpha: 0.12)
-                                  : Colors.transparent,
+                              color: active ? color : Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: active ? color : DrColors.border,
@@ -663,7 +705,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: active
-                                      ? color
+                                      ? Colors.white
                                       : DrColors.textSecondary,
                                 ),
                               ),
@@ -673,12 +715,13 @@ class _ScheduleViewState extends State<ScheduleView> {
                       },
                     ),
                   ),
+               */
                 ],
               ),
             ),
 
             const SizedBox(height: 6),
-
+            // Text("-=-=-=-=-=-=-=-=", style: TextStyle(color: DrColors.primary)),
             // ── List ─────────────────────────────────────────────
             Expanded(
               child: _loading
@@ -705,11 +748,22 @@ class _ScheduleViewState extends State<ScheduleView> {
                       controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
                       itemCount: filtered.length + (_hasMore ? 1 : 0),
-                      separatorBuilder: (_, si) => const Divider(
-                        height: 1,
-                        thickness: 0.5,
-                        color: DrColors.border,
-                      ),
+                      separatorBuilder: (_, si) {
+                        if (si >= filtered.length - 1) {
+                          return const SizedBox.shrink();
+                        }
+                        if (!_isSameDay(
+                          filtered[si].startTime,
+                          filtered[si + 1].startTime,
+                        )) {
+                          return const SizedBox.shrink();
+                        }
+                        return const Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          color: DrColors.border,
+                        );
+                      },
                       itemBuilder: (_, i) {
                         if (i == filtered.length) {
                           return const Padding(
@@ -850,25 +904,23 @@ class _DateHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isToday
-                  ? DrColors.primary.withValues(alpha: 0.7)
-                  : DrColors.primaryLight,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isToday
-                    ? DrColors.primary.withValues(alpha: 0.7)
-                    : DrColors.primary.withValues(alpha: 0.3),
-                width: 1.0,
-              ),
-            ),
+            // decoration: BoxDecoration(
+            //   color: isToday ? DrColors.primary : DrColors.primaryLight,
+            //   borderRadius: BorderRadius.circular(16),
+            //   border: Border.all(
+            //     color: isToday
+            //         ? DrColors.primary
+            //         : DrColors.primary.withValues(alpha: 0.3),
+            //     width: 1.0,
+            //   ),
+            // ),
             child: Text(
               dateStr.toUpperCase(),
               style: GoogleFonts.inter(
-                fontSize: 10,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
-                color: isToday ? Colors.white : DrColors.primary,
+                color: isToday ? DrColors.primary : DrColors.primary,
               ),
             ),
           ),
@@ -1378,7 +1430,7 @@ class _ScheduleCard extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              'History',
+                              'Record',
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -1539,7 +1591,7 @@ class _ScheduleCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (item.personName.isNotEmpty)
+                  if (item.personName.isNotEmpty) ...[
                     Text(
                       item.personName,
                       style: GoogleFonts.inter(
@@ -1550,7 +1602,8 @@ class _ScheduleCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 4),
+                    const SizedBox(height: 4),
+                  ],
                   Text(
                     item.personName.isNotEmpty
                         ? item.type.replaceAll('_', ' ')
@@ -1573,18 +1626,20 @@ class _ScheduleCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      // border: Border.all(
-                      color: _isAppt
-                          ? DrColors.primary.withValues(alpha: 0.5)
-                          : DrColors.accent.withValues(alpha: 0.5),
-                      // ),
-                      borderRadius: BorderRadius.circular(5),
+                      // color: _isAppt
+                      //     ? DrColors.primary.withValues(alpha: 0.08)
+                      //     : Colors.green.withValues(alpha: 0.08),
+                      border: Border.all(
+                        color: _isAppt ? DrColors.primary : Colors.green,
+                        // : DrColors.accent.withValues(alpha: 0.5),
+                      ),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       _isAppt ? 'Appointment' : 'Task',
                       style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: DrColors.background,
+                        color: _isAppt ? DrColors.primary : Colors.green,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1706,58 +1761,53 @@ class _StatusUpdateSheet extends StatefulWidget {
 }
 
 class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
-  final _reasonCtrl = TextEditingController();
-  final _summaryCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
   bool _loading = false;
-  String? _chosen;
+  String? _submittingAction; // 'Completed' or 'Cancelled'
 
   @override
   void dispose() {
-    _reasonCtrl.dispose();
-    _summaryCtrl.dispose();
+    _notesCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (_chosen == null) return;
+  Future<void> _submit(String action) async {
     final ctrl = HomeCtrl.to;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _submittingAction = action;
+    });
     bool ok;
-    if (_chosen == 'Completed') {
-      ok = widget.docType == 'appointment'
-          ? await ctrl.completeAppointment(
-              docId: widget.docId,
-              summary: _summaryCtrl.text.trim(),
-            )
-          : await ctrl.completeMeeting(
-              docId: widget.docId,
-              summary: _summaryCtrl.text.trim(),
-            );
+    final noteText = _notesCtrl.text.trim();
+    if (action == 'Completed') {
+      if (widget.docType == 'appointment') {
+        ok = await ctrl.completeAppointment(
+          docId: widget.docId,
+          summary: noteText,
+        );
+      } else {
+        ok = await ctrl.completeMeeting(docId: widget.docId, summary: noteText);
+      }
     } else {
-      // if (_reasonCtrl.text.trim().isEmpty) {
-      //   setState(() => _loading = false);
-      //   AppSnackbar.error(context, 'Please enter a cancellation reason.');
-      //   return;
-      // }
-      ok = widget.docType == 'appointment'
-          ? await ctrl.cancelAppointment(
-              docId: widget.docId,
-              reason: _reasonCtrl.text.trim(),
-            )
-          : await ctrl.cancelMeeting(
-              docId: widget.docId,
-              reason: _reasonCtrl.text.trim(),
-            );
+      if (widget.docType == 'appointment') {
+        ok = await ctrl.cancelAppointment(
+          docId: widget.docId,
+          reason: noteText,
+        );
+      } else {
+        ok = await ctrl.cancelMeeting(docId: widget.docId, reason: noteText);
+      }
     }
     if (!mounted) return;
-    setState(() => _loading = false);
+    setState(() {
+      _loading = false;
+      _submittingAction = null;
+    });
     if (ok) {
       Navigator.pop(context);
       widget.onDone();
-      AppSnackbar.success(
-        context,
-        '${widget.docType == 'appointment' ? 'Appointment' : 'Task'} marked as $_chosen.',
-      );
+      final label = widget.docType == 'appointment' ? 'Appointment' : 'Task';
+      AppSnackbar.success(context, '$label marked as $action.');
     } else {
       AppSnackbar.error(context, 'Something went wrong. Please try again.');
     }
@@ -1766,18 +1816,14 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final isAppt = widget.docType == 'appointment';
+    final label = isAppt ? 'appointment' : 'task';
+
     return Container(
       // margin: const EdgeInsets.only(top: 80),
       decoration: const BoxDecoration(
         color: DrColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        // boxShadow: [
-        //   BoxShadow(
-        //     color: Color.fromARGB(255, 244, 244, 244),
-        //     blurRadius: 10,
-        //     spreadRadius: 5,
-        //   ),
-        // ],
       ),
       padding: EdgeInsets.fromLTRB(
         20,
@@ -1811,172 +1857,85 @@ class _StatusUpdateSheetState extends State<_StatusUpdateSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Select the new status for this ${widget.docType}.',
+              'Enter notes and choose to cancel or complete this $label.',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: DrColors.textSecondary,
               ),
             ),
             const SizedBox(height: 20),
+            Text(
+              'Notes (optional)',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: DrColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _notesCtrl,
+              maxLines: 4,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: DrColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Enter notes here...',
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: DrColors.textTertiary,
+                ),
+              ),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
-                  child: _StatusChoiceCard(
-                    label: 'Completed',
-                    icon: Icons.check_circle_rounded,
-                    color: DrColors.success,
-                    selected: _chosen == 'Completed',
-                    onTap: () => setState(() => _chosen = 'Completed'),
+                  // width: double.infinity,
+                  // height: 52,
+                  child: ElevatedButton(
+                    onPressed: _loading ? null : () => _submit('Completed'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DrColors.success,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _loading && _submittingAction == 'Completed'
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : const Text('Complete'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _StatusChoiceCard(
-                    label: 'Cancelled',
-                    icon: Icons.cancel_rounded,
-                    color: DrColors.error,
-                    selected: _chosen == 'Cancelled',
-                    onTap: () => setState(() => _chosen = 'Cancelled'),
+                  // width: double.infinity,
+                  // height: 52,
+                  child: ElevatedButton(
+                    onPressed: _loading ? null : () => _submit('Cancelled'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DrColors.error,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _loading && _submittingAction == 'Cancelled'
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : const Text('Cancel'),
                   ),
                 ),
               ],
-            ),
-            if (_chosen == 'Completed') ...[
-              const SizedBox(height: 16),
-              Text(
-                'Summary (optional)',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: DrColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _summaryCtrl,
-                maxLines: 3,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: DrColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Brief summary of the ${widget.docType}...',
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: DrColors.textTertiary,
-                  ),
-                ),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
-            if (_chosen == 'Cancelled') ...[
-              const SizedBox(height: 16),
-              Text(
-                'Cancellation Reason (optional)',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: DrColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _reasonCtrl,
-                maxLines: 3,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: DrColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Reason for cancellation...',
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: DrColors.textTertiary,
-                  ),
-                ),
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: (_chosen == null || _loading) ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _chosen == 'Cancelled'
-                      ? DrColors.error
-                      : _chosen == 'Completed'
-                      ? DrColors.success
-                      : DrColors.primary,
-                ),
-                child: _loading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
-                        ),
-                      )
-                    : Text(
-                        _chosen == null
-                            ? 'Select a Status'
-                            : 'Mark as $_chosen',
-                      ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusChoiceCard extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-  const _StatusChoiceCard({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.10) : DrColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? color : DrColors.border,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 28,
-              color: selected ? color : DrColors.textTertiary,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected ? color : DrColors.textSecondary,
-              ),
             ),
           ],
         ),

@@ -1,19 +1,28 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../controllers/auth_ctrl.dart';
-import '../../../../controllers/home_ctrl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../models/app_meet_model.dart';
 import '../../../../utils/app_theme.dart';
 import '../../../../utils/phone_helper.dart';
 import 'contacts_view.dart';
+import '../appointments/appointment_form.dart';
+import '../meetings/meeting_form.dart';
+import '../../../../models/patient_model.dart';
+import '../../../../models/meeting_per_model.dart';
+import '../../../../utils/firebase.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ContactDetailView
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum _RecordTab { upcoming, history }
+import '../../../../widgets/form_date_time_pickers.dart'; // ─────────────────────────────────────────────────────────────────────────────
+// ContactDetailView
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum _TimeFilter { upcoming, today, thisWeek, thisMonth, custom }
 
 class ContactDetailView extends StatefulWidget {
   final ContactEntry contact;
@@ -24,80 +33,277 @@ class ContactDetailView extends StatefulWidget {
 }
 
 class _ContactDetailViewState extends State<ContactDetailView> {
-  _RecordTab _tab = _RecordTab.upcoming;
-  // Default to today
-  DateTime _selectedDate = DateTime.now();
+  final ScrollController _scrollController = ScrollController();
+
+  _TimeFilter _filter = _TimeFilter.upcoming;
+  DateTimeRange? _customRange;
+
   List<AppointmentMeetingModel> _records = [];
-  bool _loading = true;
+  bool _loading = false;
+  bool _loadingMore = false;
+  DocumentSnapshot? _lastDoc;
+  bool _hasMore = true;
+  static const int _pageSize = 10;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _scrollController.addListener(_onScroll);
+    _loadNextPage();
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
-    final result = await HomeCtrl.to.fetchRecordsForPersonOnDate(
-      personId: widget.contact.id,
-      doctorId: doctorId,
-      date: _selectedDate,
-    );
-    if (!mounted) return;
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadNextPage(isLoadMore: true);
+    }
+  }
+
+  Future<void> _refresh() async {
     setState(() {
-      _records = result;
-      _loading = false;
+      _records.clear();
+      _lastDoc = null;
+      _hasMore = true;
+    });
+    await _loadNextPage();
+  }
+
+  Future<void> _loadNextPage({bool isLoadMore = false}) async {
+    if (isLoadMore) {
+      if (_loadingMore || !_hasMore) return;
+      setState(() => _loadingMore = true);
+    } else {
+      if (_loading) return;
+      setState(() => _loading = true);
+    }
+
+    try {
+      final now = DateTime.now();
+      Query<Map<String, dynamic>> query = FBFireStore.apptAndMeeting.where(
+        'personId',
+        isEqualTo: widget.contact.id,
+      );
+
+      switch (_filter) {
+        case _TimeFilter.upcoming:
+          query = query.where(
+            'startTime',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(now),
+          );
+          break;
+        case _TimeFilter.today:
+          final start = DateTime(now.year, now.month, now.day);
+          final end = start.add(const Duration(days: 1));
+          query = query
+              .where(
+                'startTime',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+              )
+              .where('startTime', isLessThan: Timestamp.fromDate(end));
+          break;
+        case _TimeFilter.thisWeek:
+          final start = DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(Duration(days: now.weekday - 1));
+          final end = start.add(const Duration(days: 7));
+          query = query
+              .where(
+                'startTime',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+              )
+              .where('startTime', isLessThan: Timestamp.fromDate(end));
+          break;
+        case _TimeFilter.thisMonth:
+          final start = DateTime(now.year, now.month, 1);
+          final end = DateTime(now.year, now.month + 1, 1);
+          query = query
+              .where(
+                'startTime',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+              )
+              .where('startTime', isLessThan: Timestamp.fromDate(end));
+          break;
+        case _TimeFilter.custom:
+          if (_customRange != null) {
+            final start = DateTime(
+              _customRange!.start.year,
+              _customRange!.start.month,
+              _customRange!.start.day,
+            );
+            final end = DateTime(
+              _customRange!.end.year,
+              _customRange!.end.month,
+              _customRange!.end.day,
+            ).add(const Duration(days: 1));
+            query = query
+                .where(
+                  'startTime',
+                  isGreaterThanOrEqualTo: Timestamp.fromDate(start),
+                )
+                .where('startTime', isLessThan: Timestamp.fromDate(end));
+          } else {
+            setState(() {
+              if (isLoadMore) {
+                _loadingMore = false;
+              } else {
+                _loading = false;
+              }
+            });
+            return;
+          }
+          break;
+      }
+
+      query = query.orderBy('startTime', descending: true).limit(_pageSize);
+
+      if (isLoadMore && _lastDoc != null) {
+        query = query.startAfterDocument(_lastDoc!);
+      }
+
+      final snap = await query.get();
+      var items = snap.docs
+          .map(AppointmentMeetingModel.fromQueryDocumentSnapshot)
+          .toList();
+
+      if (_filter == _TimeFilter.upcoming) {
+        items = items.where((e) => e.status == 'Scheduled').toList();
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        if (isLoadMore) {
+          _records.addAll(items);
+          _loadingMore = false;
+        } else {
+          _records = items;
+          _loading = false;
+        }
+        _lastDoc = snap.docs.isNotEmpty ? snap.docs.last : _lastDoc;
+        _hasMore = items.length == _pageSize;
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('Firestore Error (Check if index is required): $e');
+      if (e.message != null &&
+          e.message!.contains('https://console.firebase.google.com')) {
+        debugPrint('Index Required! Click here to create it:');
+        final startIndex = e.message!.indexOf('https://');
+        if (startIndex != -1) {
+          final url = e.message!.substring(startIndex);
+          debugPrint(url);
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingMore = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading records: $e');
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingMore = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _changeFilter(_TimeFilter newFilter) async {
+    if (newFilter == _TimeFilter.custom) {
+      final picked = await Navigator.push<DateTimeRange>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FullScreenDateRangePicker(initialRange: _customRange),
+          fullscreenDialog: true,
+        ),
+      );
+      if (picked == null) return;
+      setState(() {
+        _customRange = picked;
+        _filter = _TimeFilter.custom;
+        _records.clear();
+        _lastDoc = null;
+        _hasMore = true;
+      });
+      _loadNextPage();
+    } else {
+      setState(() {
+        _filter = newFilter;
+        _records.clear();
+        _lastDoc = null;
+        _hasMore = true;
+      });
+      _loadNextPage();
+    }
+  }
+
+  Future<void> _addAppointment() async {
+    final snap = await FBFireStore.patients.doc(widget.contact.id).get();
+    if (!snap.exists || !mounted) return;
+    final patient = PatientModel.fromJson(snap.data()!);
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AppointmentFormSheet(initialPatient: patient),
+        fullscreenDialog: true,
+      ),
+    ).then((_) {
+      if (mounted) _refresh();
     });
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: DrColors.primary),
-        ),
-        child: child!,
+  Future<void> _addTask() async {
+    final snap = await FBFireStore.meetingPersons.doc(widget.contact.id).get();
+    if (!snap.exists || !mounted) return;
+    final person = MeetingPersonModel.fromJson(snap.data()!);
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MeetingFormSheet(initialPerson: person),
+        fullscreenDialog: true,
       ),
-    );
-    if (picked != null && mounted) {
-      setState(() => _selectedDate = picked);
-      await _load();
-    }
+    ).then((_) {
+      if (mounted) _refresh();
+    });
   }
 
-  bool get _isToday {
-    final now = DateTime.now();
-    return _selectedDate.year == now.year &&
-        _selectedDate.month == now.month &&
-        _selectedDate.day == now.day;
-  }
-
-  List<AppointmentMeetingModel> get _filtered {
-    final now = DateTime.now();
-    if (_tab == _RecordTab.upcoming) {
-      // Scheduled items that haven't started yet (or are in progress today)
-      return _records
-          .where(
-            (r) =>
-                r.status == 'Scheduled' &&
-                (r.endTime.isAfter(now) || !_isToday),
-          )
-          .toList();
-    } else {
-      // Completed, Cancelled, or already passed
-      return _records
-          .where(
-            (r) =>
-                r.status != 'Scheduled' ||
-                (r.endTime.isBefore(now) && _isToday),
-          )
-          .toList();
-    }
+  List<DropdownMenuItem<_TimeFilter>> _buildDropdownItems() {
+    return [
+      const DropdownMenuItem(
+        value: _TimeFilter.upcoming,
+        child: Text('Upcoming'),
+      ),
+      const DropdownMenuItem(value: _TimeFilter.today, child: Text('Today')),
+      const DropdownMenuItem(
+        value: _TimeFilter.thisWeek,
+        child: Text('This Week'),
+      ),
+      const DropdownMenuItem(
+        value: _TimeFilter.thisMonth,
+        child: Text('This Month'),
+      ),
+      DropdownMenuItem(
+        value: _TimeFilter.custom,
+        child: Text(
+          _customRange == null
+              ? 'Custom Range'
+              : 'Custom: ${DateFormat('MMM d').format(_customRange!.start)} – ${DateFormat('MMM d').format(_customRange!.end)}',
+        ),
+      ),
+    ];
   }
 
   Future<void> _call(String phone) async {
@@ -109,440 +315,362 @@ class _ContactDetailViewState extends State<ContactDetailView> {
     }
   }
 
+  Future<void> _whatsapp(String phone) async {
+    try {
+      var cleaned = cleanPhoneNumber(phone);
+      if (cleaned.isEmpty) return;
+      if (cleaned.startsWith('+')) {
+        cleaned = cleaned.substring(1);
+      }
+      final uri = Uri.parse('https://wa.me/$cleaned');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final contact = widget.contact;
-    final filtered = _filtered;
-    final upcomingCount = _records
-        .where(
-          (r) =>
-              r.status == 'Scheduled' &&
-              (r.endTime.isAfter(DateTime.now()) || !_isToday),
-        )
-        .length;
-    final historyCount = _records.length - upcomingCount;
+    final filtered = _records;
 
     return Scaffold(
       backgroundColor: DrColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Back button ──────────────────────────────────
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: DrColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: DrColors.border, width: 0.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        size: 14,
-                        color: DrColors.textPrimary,
-                      ),
+      appBar: AppBar(
+        backgroundColor: DrColors.primary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Patient Profile',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontSize: 18,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Contact card ─────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: DrColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: DrColors.border.withValues(alpha: 0.8),
+                      width: 0.5,
                     ),
+                    // boxShadow: [
+                    //   BoxShadow(
+                    //     color: Colors.black.withValues(alpha: 0.03),
+                    //     blurRadius: 12,
+                    //     offset: const Offset(0, 4),
+                    //   ),
+                    // ],
                   ),
-                  const SizedBox(height: 14),
-
-                  // ── Contact card ─────────────────────────────────
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: DrColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: DrColors.border, width: 0.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                  child: Row(
+                    children: [
+                      // Avatar (Modern Circle with soft accent color)
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: contact.typeColor.withValues(alpha: 0.08),
+                          shape: BoxShape.circle,
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        // Avatar (Modern Circle with soft accent color)
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: contact.typeColor.withValues(alpha: 0.08),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              contact.initials,
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: contact.typeColor,
-                              ),
+                        child: Center(
+                          child: Text(
+                            contact.initials,
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: contact.typeColor,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              contact.name,
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: DrColors.textPrimary,
+                              ),
+                            ),
+                            if (contact.email.isNotEmpty) ...[
+                              const SizedBox(height: 6),
                               Row(
                                 children: [
+                                  const Icon(
+                                    Icons.email_outlined,
+                                    size: 13,
+                                    color: DrColors.textTertiary,
+                                  ),
+                                  const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      contact.name,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: DrColors.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                  /*    const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: contact.typeColor.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      contact.typeLabel.toUpperCase(),
-                                      style: GoogleFonts.inter(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        color: contact.typeColor,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ), */
-                                ],
-                              ),
-                              if (contact.email.isNotEmpty) ...[
-                                const SizedBox(height: 5),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.email_outlined,
-                                      size: 13,
-                                      color: DrColors.textTertiary,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        contact.email,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: DrColors.textSecondary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                              if (contact.phone.isNotEmpty) ...[
-                                const SizedBox(height: 3),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.phone_outlined,
-                                      size: 13,
-                                      color: DrColors.textTertiary,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      contact.phone,
+                                      contact.email,
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
-                                        fontWeight: FontWeight.w500,
                                         color: DrColors.textSecondary,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ],
-                          ),
+                            if (contact.phone.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.phone_outlined,
+                                    size: 13,
+                                    color: DrColors.textTertiary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    contact.phone,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: DrColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
-                        if (contact.phone.isNotEmpty) ...[
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () => _call(contact.phone),
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: DrColors.primary.withValues(alpha: 0.08),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.call_rounded,
-                                size: 16,
-                                color: DrColors.primary,
-                              ),
+                      ),
+                      if (contact.phone.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () => _call(contact.phone),
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: DrColors.primary.withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.call_rounded,
+                              size: 18,
+                              color: DrColors.primary,
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // ── Date selector ────────────────────────────────
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _pickDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => _whatsapp(contact.phone),
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF25D366,
+                              ).withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(10),
+                            child: Image.asset(
+                              'assets/whatsapp.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 15),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: DrColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: DrColors.border.withValues(alpha: 0.8),
+                            width: 1,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<_TimeFilter>(
+                            dropdownColor: Colors.white,
+                            value: _filter,
+                            isExpanded: true,
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: DrColors.textSecondary,
+                            ),
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: DrColors.textPrimary,
+                            ),
+                            onChanged: (val) {
+                              if (val != null) {
+                                _changeFilter(val);
+                              }
+                            },
+                            items: _buildDropdownItems(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_filter == _TimeFilter.custom &&
+                        _customRange != null) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _changeFilter(_TimeFilter.custom),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: DrColors.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(20),
+                            shape: BoxShape.circle,
                             border: Border.all(
                               color: DrColors.primary.withValues(alpha: 0.12),
                               width: 0.5,
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.calendar_today_rounded,
-                                size: 12,
-                                color: DrColors.primaryDark,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _isToday
-                                    ? 'Today'
-                                    : DateFormat(
-                                        'MMM d, yyyy',
-                                      ).format(_selectedDate),
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: DrColors.primaryDark,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 14,
-                                color: DrColors.primaryDark.withValues(
-                                  alpha: 0.7,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (!_isToday) ...[
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() => _selectedDate = DateTime.now());
-                            _load();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: DrColors.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: DrColors.border),
-                            ),
-                            child: Text(
-                              'Back to today',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: DrColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      const Spacer(),
-                      // Refresh
-                      GestureDetector(
-                        onTap: _load,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: DrColors.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: DrColors.border,
-                              width: 0.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
                           child: const Icon(
-                            Icons.refresh_rounded,
-                            size: 14,
-                            color: DrColors.textSecondary,
+                            Icons.calendar_today_rounded,
+                            size: 16,
+                            color: DrColors.primary,
                           ),
                         ),
                       ),
                     ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // ── Upcoming / History tabs ──────────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _TabButton(
-                          label: 'Upcoming',
-                          count: upcomingCount,
-                          active: _tab == _RecordTab.upcoming,
-                          onTap: () =>
-                              setState(() => _tab = _RecordTab.upcoming),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _TabButton(
-                          label: 'History',
-                          count: historyCount,
-                          active: _tab == _RecordTab.history,
-                          onTap: () =>
-                              setState(() => _tab = _RecordTab.history),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 8),
+          const SizedBox(height: 15),
+          Divider(height: 0),
 
-            // ── Records list ────────────────────────────────────────
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: DrColors.primary,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                  : filtered.isEmpty
-                  ? _EmptyRecords(tab: _tab, isToday: _isToday)
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (_, i) => _RecordCard(record: filtered[i]),
+          // ── Records list ────────────────────────────────────────
+          Expanded(
+            child: _loading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: DrColors.primary,
+                      strokeWidth: 2.5,
                     ),
-            ),
-          ],
-        ),
+                  )
+                : filtered.isEmpty
+                ? _EmptyRecords(filter: _filter, customRange: _customRange)
+                : ListView.separated(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                    itemCount: filtered.length + (_hasMore ? 1 : 0),
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      if (i == filtered.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: DrColors.primary,
+                              strokeWidth: 2.5,
+                            ),
+                          ),
+                        );
+                      }
+                      final record = filtered[i];
+                      final DateTime currentDate = _dateOnly(record.startTime);
+                      bool showHeader = false;
+                      if (i == 0) {
+                        showHeader = true;
+                      } else {
+                        final prevRecord = filtered[i - 1];
+                        final DateTime prevDate = _dateOnly(prevRecord.startTime);
+                        if (currentDate != prevDate) {
+                          showHeader = true;
+                        }
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (showHeader)
+                            _DateHeader(label: _formatDateHeader(record.startTime)),
+                          _RecordCard(record: record),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tab button
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TabButton extends StatelessWidget {
-  final String label;
-  final int count;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _TabButton({
-    required this.label,
-    required this.count,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: BoxDecoration(
-          color: active
-              ? DrColors.primary.withValues(alpha: 0.08)
-              : DrColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: active
-              ? Border.all(
-                  color: DrColors.primary.withValues(alpha: 0.15),
-                  width: 0.5,
-                )
-              : Border.all(color: DrColors.border, width: 0.5),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: DrColors.border, width: 0.5)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: active ? DrColors.primaryDark : DrColors.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: active
-                    ? DrColors.primary.withValues(alpha: 0.15)
-                    : DrColors.border.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: active ? DrColors.primaryDark : DrColors.textTertiary,
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: _addTask,
+                  child: Text(
+                    'ADD TASK',
+                    style: GoogleFonts.inter(
+                      color: DrColors.accent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+              Container(width: 1, height: 24, color: DrColors.border),
+              Expanded(
+                child: TextButton(
+                  onPressed: _addAppointment,
+                  child: Text(
+                    'ADD APPOINTMENT',
+                    style: GoogleFonts.inter(
+                      color: DrColors.accent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -892,11 +1020,14 @@ class _RecordCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: DrColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: DrColors.border, width: 0.5),
+        border: Border.all(
+          color: DrColors.border.withValues(alpha: 0.8),
+          width: 0.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -912,9 +1043,9 @@ class _RecordCard extends StatelessWidget {
                 Container(width: 3.5, color: _accentColor),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
                           child: Column(
@@ -993,6 +1124,7 @@ class _RecordCard extends StatelessWidget {
                         const SizedBox(width: 10),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               DateFormat('HH:mm').format(record.startTime),
@@ -1031,6 +1163,12 @@ class _RecordCard extends StatelessWidget {
                             ),
                           ],
                         ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: DrColors.textTertiary,
+                        ),
                       ],
                     ),
                   ),
@@ -1049,23 +1187,43 @@ class _RecordCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _EmptyRecords extends StatelessWidget {
-  final _RecordTab tab;
-  final bool isToday;
-  const _EmptyRecords({required this.tab, required this.isToday});
+  final _TimeFilter filter;
+  final DateTimeRange? customRange;
+  const _EmptyRecords({required this.filter, this.customRange});
 
   @override
   Widget build(BuildContext context) {
-    final icon = tab == _RecordTab.upcoming
+    final icon = filter == _TimeFilter.upcoming
         ? Icons.event_available_rounded
         : Icons.history_rounded;
-    final title = tab == _RecordTab.upcoming
-        ? 'No upcoming records'
-        : 'No history for this day';
-    final subtitle = tab == _RecordTab.upcoming
-        ? isToday
-              ? 'No appointments or meetings scheduled for today'
-              : 'Nothing scheduled for this day'
-        : 'No completed or cancelled records on this day';
+    String title = 'No records';
+    String subtitle = 'No appointments or tasks found.';
+
+    switch (filter) {
+      case _TimeFilter.upcoming:
+        title = 'No upcoming records';
+        subtitle = 'Nothing scheduled for the future.';
+        break;
+      case _TimeFilter.today:
+        title = 'No records for today';
+        subtitle = 'No appointments or tasks scheduled for today.';
+        break;
+      case _TimeFilter.thisWeek:
+        title = 'No records for this week';
+        subtitle = 'No appointments or tasks scheduled for this week.';
+        break;
+      case _TimeFilter.thisMonth:
+        title = 'No records for this month';
+        subtitle = 'No appointments or tasks scheduled for this month.';
+        break;
+      case _TimeFilter.custom:
+        final dateStr = customRange != null
+            ? '${DateFormat('MMMM d').format(customRange!.start)} – ${DateFormat('MMMM d').format(customRange!.end)}'
+            : 'this range';
+        title = 'No records for $dateStr';
+        subtitle = 'No appointments or tasks scheduled for this range.';
+        break;
+    }
 
     return Center(
       child: Padding(
@@ -1130,4 +1288,48 @@ class _StatusBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _DateHeader & Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DateHeader extends StatelessWidget {
+  final String label;
+  const _DateHeader({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14, bottom: 6, left: 4),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: DrColors.textSecondary,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+String _formatDateHeader(DateTime date) {
+  final now = DateTime.now();
+  final today = _dateOnly(now);
+  final yesterday = today.subtract(const Duration(days: 1));
+  final tomorrow = today.add(const Duration(days: 1));
+
+  final headerDate = _dateOnly(date);
+  if (headerDate == today) {
+    return 'Today · ${DateFormat('MMMM d, yyyy').format(date)}';
+  } else if (headerDate == yesterday) {
+    return 'Yesterday · ${DateFormat('MMMM d, yyyy').format(date)}';
+  } else if (headerDate == tomorrow) {
+    return 'Tomorrow · ${DateFormat('MMMM d, yyyy').format(date)}';
+  }
+  return DateFormat('EEEE, MMMM d, yyyy').format(date);
 }
