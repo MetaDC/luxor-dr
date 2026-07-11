@@ -349,11 +349,19 @@ class _ContactsViewState extends State<ContactsView> {
           actions: [
             IconButton(
               icon: const Icon(Icons.add_rounded, color: Colors.white),
-              onPressed: () {
-                showDialog(
+              onPressed: () async {
+                final result = await showDialog<PatientModel>(
                   context: context,
-                  builder: (_) => const _CreateContactDialog(),
+                  builder: (_) => const PatientFormDialog(),
                 );
+                if (result != null && mounted) {
+                  setState(() {
+                    if (_pages.isEmpty) {
+                      _pages.add([]);
+                    }
+                    _pages[0].insert(0, result);
+                  });
+                }
               },
             ),
           ],
@@ -471,13 +479,36 @@ class _ContactsViewState extends State<ContactsView> {
                             }
                             return _ContactCard(
                               contact: visible[i],
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      ContactDetailView(contact: visible[i]),
-                                ),
-                              ),
+                              onTap: () async {
+                                final result = await Navigator.push<ContactEntry>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ContactDetailView(contact: visible[i]),
+                                  ),
+                                );
+                                if (result != null && mounted) {
+                                  setState(() {
+                                    for (int pageIdx = 0; pageIdx < _pages.length; pageIdx++) {
+                                      final idx = _pages[pageIdx].indexWhere((p) => p.docId == result.id);
+                                      if (idx != -1) {
+                                        final current = _pages[pageIdx][idx];
+                                        _pages[pageIdx][idx] = PatientModel(
+                                          docId: current.docId,
+                                          name: result.name,
+                                          lowerName: result.name.toLowerCase(),
+                                          email: result.email,
+                                          phone: result.phone,
+                                          createdByRole: current.createdByRole,
+                                          createdAt: current.createdAt,
+                                          updatedAt: DateTime.now(),
+                                        );
+                                        break;
+                                      }
+                                    }
+                                  });
+                                }
+                              },
                             );
                           },
                         ),
@@ -752,20 +783,25 @@ class _EmptyState extends StatelessWidget {
 // Create Contact Dialog
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CreateContactDialog extends StatefulWidget {
-  const _CreateContactDialog();
+class PatientFormDialog extends StatefulWidget {
+  final PatientModel? patient;
+  const PatientFormDialog({super.key, this.patient});
 
   @override
-  State<_CreateContactDialog> createState() => _CreateContactDialogState();
+  State<PatientFormDialog> createState() => _PatientFormDialogState();
 }
 
-class _CreateContactDialogState extends State<_CreateContactDialog> {
+class _PatientFormDialogState extends State<PatientFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
+  late final _nameCtrl = TextEditingController(
+    text: widget.patient?.name ?? '',
+  );
   late final TextEditingController _phoneCtrl;
   late String _dialCode;
 
-  final _emailCtrl = TextEditingController();
+  late final _emailCtrl = TextEditingController(
+    text: widget.patient?.email ?? '',
+  );
   bool _loading = false;
 
   @override
@@ -779,9 +815,14 @@ class _CreateContactDialogState extends State<_CreateContactDialog> {
   @override
   void initState() {
     super.initState();
-
-    _dialCode = '+91';
-    _phoneCtrl = TextEditingController();
+    if (widget.patient?.phone != null && widget.patient!.phone.isNotEmpty) {
+      final (code, number) = parseStoredPhone(widget.patient!.phone);
+      _dialCode = code;
+      _phoneCtrl = TextEditingController(text: number);
+    } else {
+      _dialCode = '+91';
+      _phoneCtrl = TextEditingController();
+    }
   }
 
   Future<void> _save() async {
@@ -789,18 +830,49 @@ class _CreateContactDialogState extends State<_CreateContactDialog> {
     setState(() => _loading = true);
     final fullPhone = '$_dialCode ${_phoneCtrl.text.trim()}';
 
-    final p = await HomeCtrl.to.createPatient(
-      name: _nameCtrl.text,
-      email: _emailCtrl.text,
-      phone: fullPhone,
-    );
+    PatientModel? returnedPatient;
+    bool ok = false;
+    final ctrl = HomeCtrl.to;
+
+    if (widget.patient == null) {
+      final p = await ctrl.createPatient(
+        name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        phone: fullPhone,
+      );
+      if (p != null) {
+        returnedPatient = p;
+        ok = true;
+      }
+    } else {
+      final p = PatientModel(
+        docId: widget.patient!.docId,
+        name: _nameCtrl.text.trim(),
+        lowerName: _nameCtrl.text.trim().toLowerCase(),
+        email: _emailCtrl.text.trim(),
+        phone: fullPhone,
+        createdByRole: widget.patient!.createdByRole,
+        createdAt: widget.patient!.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      ok = await ctrl.updatePatient(p);
+      if (ok) {
+        returnedPatient = p;
+      }
+    }
+
     if (!mounted) return;
     setState(() => _loading = false);
-    if (p != null) {
-      Navigator.pop(context);
-      AppSnackbar.success(context, 'Patient created successfully.');
+    if (ok) {
+      Navigator.pop(context, returnedPatient);
+      AppSnackbar.success(
+        context,
+        widget.patient == null
+            ? 'Patient created successfully.'
+            : 'Patient updated successfully.',
+      );
     } else {
-      AppSnackbar.error(context, 'Failed to create patient.');
+      AppSnackbar.error(context, 'Something went wrong. Please try again.');
     }
   }
 
@@ -817,7 +889,7 @@ class _CreateContactDialogState extends State<_CreateContactDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Create Patient',
+                widget.patient == null ? 'Create Patient' : 'Edit Patient',
                 style: GoogleFonts.inter(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -884,7 +956,7 @@ class _CreateContactDialogState extends State<_CreateContactDialog> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text('Create'),
+                          : Text(widget.patient == null ? 'Create' : 'Save'),
                     ),
                   ),
                 ],

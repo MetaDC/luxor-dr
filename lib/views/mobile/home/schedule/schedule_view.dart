@@ -52,7 +52,6 @@ class _ScheduleViewState extends State<ScheduleView> {
   bool _isLoadingMore = false;
   static const int _pageSize = 10;
 
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _realtimeSub;
   List<AppointmentMeetingModel> _fetched = [];
   bool _loading = false;
 
@@ -130,12 +129,10 @@ class _ScheduleViewState extends State<ScheduleView> {
   void dispose() {
     _scrollController.dispose();
     _pageController.dispose();
-    _realtimeSub?.cancel();
     super.dispose();
   }
 
   Future<void> _fetchInitialSchedule() async {
-    _realtimeSub?.cancel();
     setState(() {
       _loading = true;
       _fetched = [];
@@ -174,8 +171,6 @@ class _ScheduleViewState extends State<ScheduleView> {
       _hasMore = _fetched.length >= _pageSize;
       _loading = false;
     });
-
-    _startRealtimeListener();
   }
 
   Future<void> _fetchNextSchedulePage() async {
@@ -224,82 +219,60 @@ class _ScheduleViewState extends State<ScheduleView> {
     });
   }
 
-  void _startRealtimeListener() {
-    _realtimeSub?.cancel();
-    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
-    if (doctorId.isEmpty) return;
+  bool _matchesFilters(AppointmentMeetingModel model) {
+    final matchesType = _typeFilter == _TypeFilter.all ||
+        (_typeFilter == _TypeFilter.appointments &&
+            model.docType == 'appointment') ||
+        (_typeFilter == _TypeFilter.meetings &&
+            model.docType == 'meeting');
 
-    _realtimeSub = FBFireStore.apptAndMeeting
-        .where('doctorId', isEqualTo: doctorId)
-        .snapshots()
-        .listen(
-          (snap) {
-            if (!mounted) return;
+    final matchesStatus =
+        _statusFilter == 'All' || model.status == _statusFilter;
 
-            setState(() {
-              for (final change in snap.docChanges) {
-                final doc = change.doc;
-                final model = AppointmentMeetingModel.fromQueryDocumentSnapshot(
-                  doc,
-                );
+    final bool isWithinCurrentView;
+    if (!_isToday(_selectedDate)) {
+      isWithinCurrentView =
+          model.startTime.year == _selectedDate.year &&
+          model.startTime.month == _selectedDate.month &&
+          model.startTime.day == _selectedDate.day;
+    } else {
+      final start = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+      );
+      isWithinCurrentView =
+          model.startTime.isAtSameMomentAs(start) ||
+          model.startTime.isAfter(start);
+    }
+    return matchesType && matchesStatus && isWithinCurrentView;
+  }
 
-                final matchesType =
-                    _typeFilter == _TypeFilter.all ||
-                    (_typeFilter == _TypeFilter.appointments &&
-                        model.docType == 'appointment') ||
-                    (_typeFilter == _TypeFilter.meetings &&
-                        model.docType == 'meeting');
+  void _onItemCreated(AppointmentMeetingModel model) {
+    if (_matchesFilters(model)) {
+      setState(() {
+        if (!_fetched.any((e) => e.docId == model.docId)) {
+          _fetched.add(model);
+          _fetched.sort((a, b) => a.startTime.compareTo(b.startTime));
+        }
+      });
+    }
+  }
 
-                final matchesStatus =
-                    _statusFilter == 'All' || model.status == _statusFilter;
-
-                final bool isWithinCurrentView;
-                if (!_isToday(_selectedDate)) {
-                  isWithinCurrentView =
-                      model.startTime.year == _selectedDate.year &&
-                      model.startTime.month == _selectedDate.month &&
-                      model.startTime.day == _selectedDate.day;
-                } else {
-                  final start = DateTime(
-                    _selectedDate.year,
-                    _selectedDate.month,
-                    _selectedDate.day,
-                  );
-                  isWithinCurrentView =
-                      model.startTime.isAtSameMomentAs(start) ||
-                      model.startTime.isAfter(start);
-                }
-
-                final matchesFilters =
-                    matchesType && matchesStatus && isWithinCurrentView;
-
-                if (change.type == DocumentChangeType.removed) {
-                  _fetched.removeWhere((e) => e.docId == doc.id);
-                } else if (change.type == DocumentChangeType.modified) {
-                  final idx = _fetched.indexWhere((e) => e.docId == doc.id);
-                  if (idx != -1) {
-                    if (matchesFilters) {
-                      _fetched[idx] = model;
-                    } else {
-                      _fetched.removeAt(idx);
-                    }
-                  } else if (matchesFilters) {
-                    _fetched.add(model);
-                  }
-                } else if (change.type == DocumentChangeType.added) {
-                  final exists = _fetched.any((e) => e.docId == doc.id);
-                  if (!exists && matchesFilters) {
-                    _fetched.add(model);
-                  }
-                }
-              }
-              _fetched.sort((a, b) => a.startTime.compareTo(b.startTime));
-            });
-          },
-          onError: (e) {
-            debugPrint('Realtime sub error: $e');
-          },
-        );
+  void _onItemUpdated(AppointmentMeetingModel model) {
+    setState(() {
+      final idx = _fetched.indexWhere((e) => e.docId == model.docId);
+      if (idx != -1) {
+        if (_matchesFilters(model)) {
+          _fetched[idx] = model;
+        } else {
+          _fetched.removeAt(idx);
+        }
+      } else if (_matchesFilters(model)) {
+        _fetched.add(model);
+      }
+      _fetched.sort((a, b) => a.startTime.compareTo(b.startTime));
+    });
   }
 
   void _refresh() {
@@ -789,7 +762,11 @@ class _ScheduleViewState extends State<ScheduleView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (showHeader) _DateHeader(date: item.startTime),
-                            _ScheduleCard(item: item, onRefresh: _refresh),
+                            _ScheduleCard(
+                              item: item,
+                              onRefresh: _refresh,
+                              onItemUpdated: _onItemUpdated,
+                            ),
                           ],
                         );
                       },
@@ -809,15 +786,18 @@ class _ScheduleViewState extends State<ScheduleView> {
               children: [
                 Expanded(
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final result = await Navigator.push<AppointmentMeetingModel>(
                         context,
                         MaterialPageRoute(
                           builder: (_) =>
                               MeetingFormSheet(initialDate: _selectedDate),
                           fullscreenDialog: true,
                         ),
-                      ).then((_) => _refresh());
+                      );
+                      if (result != null && mounted) {
+                        _onItemCreated(result);
+                      }
                     },
                     child: Text(
                       'ADD TASK',
@@ -833,15 +813,18 @@ class _ScheduleViewState extends State<ScheduleView> {
                 Container(width: 1, height: 24, color: DrColors.border),
                 Expanded(
                   child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final result = await Navigator.push<AppointmentMeetingModel>(
                         context,
                         MaterialPageRoute(
                           builder: (_) =>
                               AppointmentFormSheet(initialDate: _selectedDate),
                           fullscreenDialog: true,
                         ),
-                      ).then((_) => _refresh());
+                      );
+                      if (result != null && mounted) {
+                        _onItemCreated(result);
+                      }
                     },
                     child: Text(
                       'ADD APPOINTMENT',
@@ -1008,8 +991,13 @@ class _EmptyState extends StatelessWidget {
 class _ScheduleCard extends StatelessWidget {
   final AppointmentMeetingModel item;
   final VoidCallback onRefresh;
+  final Function(AppointmentMeetingModel) onItemUpdated;
 
-  const _ScheduleCard({required this.item, required this.onRefresh});
+  const _ScheduleCard({
+    required this.item,
+    required this.onRefresh,
+    required this.onItemUpdated,
+  });
 
   bool get _isAppt => item.docType == 'appointment';
 
@@ -1092,8 +1080,8 @@ class _ScheduleCard extends StatelessWidget {
     return _typeColor;
   }
 
-  void _openEdit(BuildContext context) {
-    Navigator.push(
+  void _openEdit(BuildContext context) async {
+    final result = await Navigator.push<AppointmentMeetingModel>(
       context,
       MaterialPageRoute(
         builder: (_) => _isAppt
@@ -1101,7 +1089,10 @@ class _ScheduleCard extends StatelessWidget {
             : MeetingFormSheet(meeting: item),
         fullscreenDialog: true,
       ),
-    ).then((_) => onRefresh());
+    );
+    if (result != null) {
+      onItemUpdated(result);
+    }
   }
 
   void _showStatusMenu(BuildContext context) {
@@ -1119,7 +1110,13 @@ class _ScheduleCard extends StatelessWidget {
       builder: (_) => _StatusUpdateSheet(
         docId: item.docId,
         docType: item.docType,
-        onDone: onRefresh,
+        onDone: () async {
+          final doc = await FBFireStore.apptAndMeeting.doc(item.docId).get();
+          if (doc.exists) {
+            final updated = AppointmentMeetingModel.fromQueryDocumentSnapshot(doc);
+            onItemUpdated(updated);
+          }
+        },
       ),
     );
   }

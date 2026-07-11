@@ -296,7 +296,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (ok) {
-      Navigator.pop(context);
+      Navigator.pop(context, meeting);
       AppSnackbar.success(
         context,
         widget.meeting == null ? 'Meeting created.' : 'Meeting updated.',

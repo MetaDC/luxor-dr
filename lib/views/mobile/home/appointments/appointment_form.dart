@@ -297,7 +297,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (ok) {
-      Navigator.pop(context);
+      Navigator.pop(context, appt);
       AppSnackbar.success(
         context,
         widget.appointment == null

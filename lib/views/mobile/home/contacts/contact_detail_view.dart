@@ -33,6 +33,7 @@ class ContactDetailView extends StatefulWidget {
 }
 
 class _ContactDetailViewState extends State<ContactDetailView> {
+  late ContactEntry _contact;
   final ScrollController _scrollController = ScrollController();
 
   _TimeFilter _filter = _TimeFilter.upcoming;
@@ -48,6 +49,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
   @override
   void initState() {
     super.initState();
+    _contact = widget.contact;
     _scrollController.addListener(_onScroll);
     _loadNextPage();
   }
@@ -88,7 +90,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
       final now = DateTime.now();
       Query<Map<String, dynamic>> query = FBFireStore.apptAndMeeting.where(
         'personId',
-        isEqualTo: widget.contact.id,
+        isEqualTo: _contact.id,
       );
 
       switch (_filter) {
@@ -249,7 +251,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
   }
 
   Future<void> _addAppointment() async {
-    final snap = await FBFireStore.patients.doc(widget.contact.id).get();
+    final snap = await FBFireStore.patients.doc(_contact.id).get();
     if (!snap.exists || !mounted) return;
     final patient = PatientModel.fromJson(snap.data()!);
     if (!mounted) return;
@@ -265,7 +267,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
   }
 
   Future<void> _addTask() async {
-    final snap = await FBFireStore.meetingPersons.doc(widget.contact.id).get();
+    final snap = await FBFireStore.meetingPersons.doc(_contact.id).get();
     if (!snap.exists || !mounted) return;
     final person = MeetingPersonModel.fromJson(snap.data()!);
     if (!mounted) return;
@@ -278,6 +280,27 @@ class _ContactDetailViewState extends State<ContactDetailView> {
     ).then((_) {
       if (mounted) _refresh();
     });
+  }
+
+  Future<void> _editContact() async {
+    final snap = await FBFireStore.patients.doc(_contact.id).get();
+    if (!snap.exists || !mounted) return;
+    final patient = PatientModel.fromJson(snap.data()!);
+    if (!mounted) return;
+    final result = await showDialog<PatientModel>(
+      context: context,
+      builder: (_) => PatientFormDialog(patient: patient),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _contact = ContactEntry(
+          id: result.docId,
+          name: result.name,
+          email: result.email,
+          phone: result.phone,
+        );
+      });
+    }
   }
 
   List<DropdownMenuItem<_TimeFilter>> _buildDropdownItems() {
@@ -333,30 +356,42 @@ class _ContactDetailViewState extends State<ContactDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final contact = widget.contact;
+    final contact = _contact;
     final filtered = _records;
 
-    return Scaffold(
-      backgroundColor: DrColors.background,
-      appBar: AppBar(
-        backgroundColor: DrColors.primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Patient Profile',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            fontSize: 18,
-            letterSpacing: 0.5,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.pop(context, _contact);
+      },
+      child: Scaffold(
+        backgroundColor: DrColors.background,
+        appBar: AppBar(
+          backgroundColor: DrColors.primary,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            onPressed: () => Navigator.pop(context, _contact),
           ),
+          title: Text(
+            'Patient Profile',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              fontSize: 18,
+              letterSpacing: 0.5,
+            ),
+          ),
+          centerTitle: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: Colors.white),
+              onPressed: _editContact,
+            ),
+          ],
         ),
-        centerTitle: false,
-      ),
-      body: Column(
+        body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
@@ -673,8 +708,9 @@ class _ContactDetailViewState extends State<ContactDetailView> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

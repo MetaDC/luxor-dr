@@ -205,6 +205,26 @@ class HomeCtrl extends GetxController {
     }
   }
 
+  Future<bool> updatePatient(PatientModel patient) async {
+    try {
+      final (code, rest) = splitStoredPhone(patient.phone);
+      await FBFireStore.patients.doc(patient.docId).update({
+        'name': patient.name,
+        'lowerName': patient.name.toLowerCase(),
+        'email': patient.email,
+        'phone': patient.phone,
+        'countryCode': code,
+        'phoneNumber': rest,
+        'combinationNames': generateSearchCombinations(patient.name),
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+      return true;
+    } catch (e) {
+      debugPrint(e.toString());
+      return false;
+    }
+  }
+
   // ─── Meeting Persons ───────────────────────────────────────────────────────
 
   Future<MeetingPersonModel?> createMeetingPerson({
