@@ -91,9 +91,7 @@ class _HomeViewState extends State<HomeView> {
                                   color: DrColors.primary,
                                   count: ctrl.todayAppointmentsCount,
                                   label: 'Appointments',
-                                  onTap: () => context.go(
-                                    '/home/schedule?filter=appointment',
-                                  ),
+                                  onTap: () => context.go('/home/schedule'),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -103,9 +101,7 @@ class _HomeViewState extends State<HomeView> {
                                   color: DrColors.accent,
                                   count: ctrl.todayMeetingsCount,
                                   label: 'Tasks',
-                                  onTap: () => context.go(
-                                    '/home/schedule?filter=meeting',
-                                  ),
+                                  onTap: () => context.go('/home/schedule'),
                                 ),
                               ),
                             ],

@@ -26,7 +26,13 @@ const _apptTypes = [
 class AppointmentFormSheet extends StatefulWidget {
   final AppointmentMeetingModel? appointment;
   final PatientModel? initialPatient;
-  const AppointmentFormSheet({super.key, this.appointment, this.initialPatient});
+  final DateTime? initialDate;
+  const AppointmentFormSheet({
+    super.key,
+    this.appointment,
+    this.initialPatient,
+    this.initialDate,
+  });
 
   @override
   State<AppointmentFormSheet> createState() => _AppointmentFormSheetState();
@@ -88,21 +94,20 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     _prefill();
 
     if (_date == null) {
-      _date = DateTime.now();
+      _date = widget.initialDate ?? DateTime.now();
+    }
+
+    final today = DateTime.now();
+    final tomorrow = today.add(const Duration(days: 1));
+    final dayAfter = today.add(const Duration(days: 2));
+    if (_isSameDay(_date!, today)) {
       _selectedDateOption = 'today';
+    } else if (_isSameDay(_date!, tomorrow)) {
+      _selectedDateOption = 'tomorrow';
+    } else if (_isSameDay(_date!, dayAfter)) {
+      _selectedDateOption = 'day_after';
     } else {
-      final today = DateTime.now();
-      final tomorrow = today.add(const Duration(days: 1));
-      final dayAfter = today.add(const Duration(days: 2));
-      if (_isSameDay(_date!, today)) {
-        _selectedDateOption = 'today';
-      } else if (_isSameDay(_date!, tomorrow)) {
-        _selectedDateOption = 'tomorrow';
-      } else if (_isSameDay(_date!, dayAfter)) {
-        _selectedDateOption = 'day_after';
-      } else {
-        _selectedDateOption = 'custom';
-      }
+      _selectedDateOption = 'custom';
     }
 
     if (_startTOD == null) {
@@ -221,6 +226,15 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     if (_endTime!.isBefore(_startTime!)) {
       AppSnackbar.error(context, 'End time must be after start time.');
       return;
+    }
+
+    if (widget.appointment == null && _date != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      if (_date!.isBefore(today)) {
+        AppSnackbar.error(context, 'Selected date cannot be in the past.');
+        return;
+      }
     }
 
     setState(() => _loading = true);

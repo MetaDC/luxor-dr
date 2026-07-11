@@ -36,7 +36,7 @@ class ScheduleView extends StatefulWidget {
 
 class _ScheduleViewState extends State<ScheduleView> {
   DateTime _selectedDate = DateTime.now();
-  String _statusFilter = 'Scheduled';
+  String _statusFilter = 'All';
   late _TypeFilter _typeFilter;
 
   final ScrollController _scrollController = ScrollController();
@@ -813,7 +813,8 @@ class _ScheduleViewState extends State<ScheduleView> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const MeetingFormSheet(),
+                          builder: (_) =>
+                              MeetingFormSheet(initialDate: _selectedDate),
                           fullscreenDialog: true,
                         ),
                       ).then((_) => _refresh());
@@ -836,7 +837,8 @@ class _ScheduleViewState extends State<ScheduleView> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AppointmentFormSheet(),
+                          builder: (_) =>
+                              AppointmentFormSheet(initialDate: _selectedDate),
                           fullscreenDialog: true,
                         ),
                       ).then((_) => _refresh());
