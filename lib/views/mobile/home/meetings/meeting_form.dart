@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../controllers/auth_ctrl.dart';
 import '../../../../controllers/home_ctrl.dart';
 import '../../../../models/app_meet_model.dart';
 import '../../../../models/meeting_per_model.dart';
+import '../../../../models/doctor_model.dart';
 import '../../../../utils/app_theme.dart';
 import '../../../../utils/firebase.dart';
 import '../../../../widgets/app_snackbar.dart';
@@ -28,11 +30,13 @@ class MeetingFormSheet extends StatefulWidget {
   final AppointmentMeetingModel? meeting;
   final MeetingPersonModel? initialPerson;
   final DateTime? initialDate;
+  final DoctorModel? initialDoctor;
   const MeetingFormSheet({
     super.key,
     this.meeting,
     this.initialPerson,
     this.initialDate,
+    this.initialDoctor,
   });
 
   @override
@@ -43,7 +47,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
   final _formKey = GlobalKey<FormState>();
   final _ctrl = HomeCtrl.to;
 
-  MeetingPersonModel? _person;
+  List<MeetingPersonModel> _selectedPersons = [];
   String _meetingType = 'business';
   DateTime? _date;
   TimeOfDay? _startTOD;
@@ -51,7 +55,8 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   bool _loading = false;
-  bool _showOnReception = true;
+  bool _showOnReception = false;
+  DoctorModel? _selectedDoctor;
 
   DateTime? get _startTime => _date != null && _startTOD != null
       ? DateTime(
@@ -92,8 +97,33 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
   @override
   void initState() {
     super.initState();
-    _person = widget.initialPerson;
+    if (widget.initialPerson != null) {
+      _selectedPersons = [widget.initialPerson!];
+    }
     _prefill();
+
+    final m = widget.meeting;
+    if (m != null) {
+      _selectedDoctor =
+          AuthCtrl.to.allDoctors.cast<DoctorModel?>().firstWhere(
+            (d) => d?.docId == m.doctorId,
+            orElse: () => null,
+          ) ??
+          DoctorModel(
+            docId: m.doctorId,
+            name: m.doctorName,
+            lowerName: m.doctorName.toLowerCase(),
+            specialization: m.specialization,
+            email: '',
+            phone: '',
+            manageByIds: [],
+            token: '',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+    } else {
+      _selectedDoctor = widget.initialDoctor ?? AuthCtrl.to.currentDoctor;
+    }
 
     if (_date == null) {
       _date = widget.initialDate ?? DateTime.now();
@@ -136,11 +166,24 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     _titleCtrl.text = m.shortDescription ?? '';
     _descCtrl.text = m.description ?? '';
     _showOnReception = m.showOnReception;
-    if (m.personId.isNotEmpty) {
+    if (m.persons.isNotEmpty) {
+      _selectedPersons = m.persons.map((p) {
+        return MeetingPersonModel(
+          docId: p['personId'] ?? '',
+          name: p['personName'] ?? '',
+          lowerName: (p['personName'] ?? '').toLowerCase(),
+          email: p['personEmail'] ?? '',
+          phone: p['personPhone'] ?? '',
+          createdByRole: '',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      }).toList();
+    } else if (m.personId.isNotEmpty) {
       FBFireStore.meetingPersons.doc(m.personId).get().then((snap) {
         if (snap.exists && mounted) {
           setState(() {
-            _person = MeetingPersonModel.fromJson(snap.data()!);
+            _selectedPersons = [MeetingPersonModel.fromJson(snap.data()!)];
           });
         }
       });
@@ -242,6 +285,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
       newStart: _startTime!,
       newEnd: _endTime!,
       excludeDocId: widget.meeting?.docId ?? '',
+      doctorId: _selectedDoctor?.docId,
     );
 
     if (!mounted) return;
@@ -256,7 +300,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     }
 
     setState(() => _loading = true);
-    final doctor = AuthCtrl.to.currentDoctor!;
+    final doctor = _selectedDoctor!;
     final now = DateTime.now();
 
     final meeting = AppointmentMeetingModel(
@@ -266,10 +310,10 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
       specialization: doctor.specialization,
       docType: 'meeting',
       type: _meetingType,
-      personId: _person?.docId ?? '',
-      personName: _person?.name ?? '',
-      personPhone: _person?.phone ?? '',
-      personEmail: _person?.email ?? '',
+      personId: _selectedPersons.isNotEmpty ? _selectedPersons.first.docId : '',
+      personName: _selectedPersons.map((p) => p.name).join(', '),
+      personPhone: _selectedPersons.isNotEmpty ? _selectedPersons.first.phone : '',
+      personEmail: _selectedPersons.isNotEmpty ? _selectedPersons.first.email : '',
       startTime: _startTime!,
       endTime: _endTime!,
       status: widget.meeting?.status ?? 'Scheduled',
@@ -287,6 +331,12 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
       summary: widget.meeting?.summary,
       completedAt: widget.meeting?.completedAt,
       showOnReception: _showOnReception,
+      persons: _selectedPersons.map((p) => {
+        'personId': p.docId,
+        'personName': p.name,
+        'personPhone': p.phone,
+        'personEmail': p.email,
+      }).toList(),
     );
 
     final ok = widget.meeting == null
@@ -299,7 +349,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
       Navigator.pop(context, meeting);
       AppSnackbar.success(
         context,
-        widget.meeting == null ? 'Meeting created.' : 'Meeting updated.',
+        widget.meeting == null ? 'Task created.' : 'Task updated.',
       );
     } else {
       AppSnackbar.error(context, 'Something went wrong. Please try again.');
@@ -440,6 +490,65 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                       ),
                       const SizedBox(height: 20),
 
+                      // Doctor Selection Dropdown
+                      GetBuilder<AuthCtrl>(
+                        builder: (auth) {
+                          final doctors = auth.allDoctors;
+                          final dropdownItems =
+                              doctors.contains(_selectedDoctor)
+                              ? doctors
+                              : (_selectedDoctor != null
+                                    ? [...doctors, _selectedDoctor!]
+                                    : doctors);
+
+                          return DropdownButtonFormField<DoctorModel>(
+                            value: _selectedDoctor,
+                            decoration: InputDecoration(
+                              labelText: 'Doctor *',
+                              labelStyle: GoogleFonts.inter(
+                                color: DrColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.always,
+                              enabledBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DrColors.border,
+                                  width: 1.0,
+                                ),
+                              ),
+                              focusedBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DrColors.primary,
+                                  width: 1.5,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                              ),
+                            ),
+                            items: dropdownItems.map((doc) {
+                              return DropdownMenuItem<DoctorModel>(
+                                value: doc,
+                                child: Text(
+                                  doc.name,
+                                  style: GoogleFonts.inter(fontSize: 14),
+                                ),
+                              );
+                            }).toList(),
+                            validator: (v) => v == null ? 'Required' : null,
+                            onChanged: (newDoc) {
+                              if (newDoc != null) {
+                                setState(() {
+                                  _selectedDoctor = newDoc;
+                                });
+                              }
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
                       // Date Field (Tappable)
                       GestureDetector(
                         onTap: _pickDate,
@@ -528,8 +637,8 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
 
                       // Person selector
                       _PersonSelector(
-                        selected: _person,
-                        onChanged: (p) => setState(() => _person = p),
+                        selected: _selectedPersons,
+                        onChanged: (list) => setState(() => _selectedPersons = list),
                       ),
                       const SizedBox(height: 16),
 
@@ -683,8 +792,8 @@ final _kNoPerson = MeetingPersonModel(
 );
 
 class _PersonSelector extends StatefulWidget {
-  final MeetingPersonModel? selected;
-  final void Function(MeetingPersonModel?) onChanged;
+  final List<MeetingPersonModel> selected;
+  final void Function(List<MeetingPersonModel>) onChanged;
 
   const _PersonSelector({required this.selected, required this.onChanged});
 
@@ -693,19 +802,22 @@ class _PersonSelector extends StatefulWidget {
 }
 
 class _PersonSelectorState extends State<_PersonSelector> {
-  MeetingPersonModel? _current;
+  List<MeetingPersonModel> _selectedList = [];
   String _query = '';
+  TextEditingController? _typeAheadController;
 
   @override
   void initState() {
     super.initState();
-    _current = widget.selected;
+    _selectedList = List.from(widget.selected);
   }
 
   @override
   void didUpdateWidget(_PersonSelector old) {
     super.didUpdateWidget(old);
-    if (widget.selected != old.selected) _current = widget.selected;
+    if (widget.selected != old.selected) {
+      _selectedList = List.from(widget.selected);
+    }
   }
 
   Future<Iterable<MeetingPersonModel>> _search(String q) async {
@@ -726,11 +838,14 @@ class _PersonSelectorState extends State<_PersonSelector> {
       builder: (_) => const _QuickCreatePersonDialog(),
     );
     if (p != null) {
-      setState(() {
-        _current = p;
-        _query = '';
-      });
-      widget.onChanged(p);
+      if (!_selectedList.any((e) => e.docId == p.docId)) {
+        setState(() {
+          _selectedList.add(p);
+          _query = '';
+        });
+        _typeAheadController?.clear();
+        widget.onChanged(_selectedList);
+      }
     }
   }
 
@@ -744,97 +859,111 @@ class _PersonSelectorState extends State<_PersonSelector> {
           children: [
             Expanded(
               child: Autocomplete<MeetingPersonModel>(
-                key: ValueKey(_current?.docId),
-                initialValue: TextEditingValue(text: _current?.name ?? ''),
                 displayStringForOption: (p) =>
                     p.docId == '__no_result__' ? '' : p.name,
                 optionsBuilder: (v) => _search(v.text),
                 onSelected: (p) {
                   if (p.docId == '__no_result__') return;
-                  setState(() {
-                    _current = p;
-                    _query = '';
-                  });
-                  widget.onChanged(p);
+                  if (!_selectedList.any((e) => e.docId == p.docId)) {
+                    setState(() {
+                      _selectedList.add(p);
+                      _query = '';
+                    });
+                    widget.onChanged(_selectedList);
+                  }
+                  _typeAheadController?.clear();
                 },
                 optionsViewBuilder: (ctx, onSel, options) => _PersonOptionsView(
                   options: options.toList(),
                   query: _query,
                   onSelected: onSel,
                 ),
-                fieldViewBuilder: (ctx, ctrl, fn, _) => TextFormField(
-                  controller: ctrl,
-                  focusNode: fn,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    color: DrColors.textPrimary,
-                  ),
-                  onChanged: (v) {
-                    if (v.isEmpty) {
-                      setState(() {
-                        _current = null;
-                        _query = '';
-                      });
-                      widget.onChanged(null);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Task Person (Optional)',
-                    labelStyle: GoogleFonts.inter(
-                      color: DrColors.textSecondary,
-                      fontSize: 13,
+                fieldViewBuilder: (ctx, ctrl, fn, _) {
+                  _typeAheadController = ctrl;
+                  return TextFormField(
+                    controller: ctrl,
+                    focusNode: fn,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      color: DrColors.textPrimary,
                     ),
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                    enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: DrColors.border,
-                        width: 1.0,
+                    decoration: InputDecoration(
+                      labelText: 'Task Person (Optional)',
+                      labelStyle: GoogleFonts.inter(
+                        color: DrColors.textSecondary,
+                        fontSize: 13,
                       ),
-                    ),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: DrColors.primary,
-                        width: 1.5,
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: DrColors.border,
+                          width: 1.0,
+                        ),
                       ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_current != null)
-                          IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 16),
-                            onPressed: () {
-                              ctrl.clear();
-                              setState(() {
-                                _current = null;
-                                _query = '';
-                              });
-                              widget.onChanged(null);
-                            },
-                          ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.person_add_alt_1_rounded,
-                            size: 20,
-                          ),
-                          onPressed: _quickCreate,
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(
                           color: DrColors.primary,
+                          width: 1.5,
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.account_circle_rounded,
-                          color: DrColors.textTertiary,
-                          size: 32,
-                        ),
-                      ],
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.person_add_alt_1_rounded,
+                              size: 20,
+                            ),
+                            onPressed: _quickCreate,
+                            color: DrColors.primary,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
         ),
+        if (_selectedList.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _selectedList.map((p) {
+              return Chip(
+                backgroundColor: DrColors.accentLight,
+                label: Text(
+                  p.phone.isNotEmpty ? '${p.name} (${p.phone})' : p.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: DrColors.textPrimary,
+                  ),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: DrColors.accent.withValues(alpha: 0.2),
+                  ),
+                ),
+                deleteIcon: const Icon(
+                  Icons.close_rounded,
+                  size: 14,
+                  color: DrColors.accent,
+                ),
+                onDeleted: () {
+                  setState(() {
+                    _selectedList.removeWhere((e) => e.docId == p.docId);
+                  });
+                  widget.onChanged(_selectedList);
+                },
+              );
+            }).toList(),
+          ),
+        ],
       ],
     );
   }
@@ -986,7 +1115,7 @@ class _QuickCreatePersonDialogState extends State<_QuickCreatePersonDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Quick Add Meeting Person',
+                'Quick Add Task Person',
                 style: GoogleFonts.inter(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,

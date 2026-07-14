@@ -220,11 +220,11 @@ class _ScheduleViewState extends State<ScheduleView> {
   }
 
   bool _matchesFilters(AppointmentMeetingModel model) {
-    final matchesType = _typeFilter == _TypeFilter.all ||
+    final matchesType =
+        _typeFilter == _TypeFilter.all ||
         (_typeFilter == _TypeFilter.appointments &&
             model.docType == 'appointment') ||
-        (_typeFilter == _TypeFilter.meetings &&
-            model.docType == 'meeting');
+        (_typeFilter == _TypeFilter.meetings && model.docType == 'meeting');
 
     final matchesStatus =
         _statusFilter == 'All' || model.status == _statusFilter;
@@ -787,14 +787,17 @@ class _ScheduleViewState extends State<ScheduleView> {
                 Expanded(
                   child: TextButton(
                     onPressed: () async {
-                      final result = await Navigator.push<AppointmentMeetingModel>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              MeetingFormSheet(initialDate: _selectedDate),
-                          fullscreenDialog: true,
-                        ),
-                      );
+                      final result =
+                          await Navigator.push<AppointmentMeetingModel>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MeetingFormSheet(
+                                initialDate: _selectedDate,
+                                initialDoctor: AuthCtrl.to.currentDoctor,
+                              ),
+                              fullscreenDialog: true,
+                            ),
+                          );
                       if (result != null && mounted) {
                         _onItemCreated(result);
                       }
@@ -814,14 +817,17 @@ class _ScheduleViewState extends State<ScheduleView> {
                 Expanded(
                   child: TextButton(
                     onPressed: () async {
-                      final result = await Navigator.push<AppointmentMeetingModel>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AppointmentFormSheet(initialDate: _selectedDate),
-                          fullscreenDialog: true,
-                        ),
-                      );
+                      final result =
+                          await Navigator.push<AppointmentMeetingModel>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AppointmentFormSheet(
+                                initialDate: _selectedDate,
+                                initialDoctor: AuthCtrl.to.currentDoctor,
+                              ),
+                              fullscreenDialog: true,
+                            ),
+                          );
                       if (result != null && mounted) {
                         _onItemCreated(result);
                       }
@@ -881,7 +887,7 @@ class _DateHeader extends StatelessWidget {
           Expanded(
             child: Divider(
               color: isToday
-                  ? DrColors.primary.withValues(alpha: 0.3)
+                  ? DrColors.accent.withValues(alpha: 0.3)
                   : DrColors.border,
               thickness: 1,
             ),
@@ -905,7 +911,7 @@ class _DateHeader extends StatelessWidget {
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
-                color: isToday ? DrColors.primary : DrColors.primary,
+                color: DrColors.accent,
               ),
             ),
           ),
@@ -913,7 +919,7 @@ class _DateHeader extends StatelessWidget {
           Expanded(
             child: Divider(
               color: isToday
-                  ? DrColors.primary.withValues(alpha: 0.3)
+                  ? DrColors.accent.withValues(alpha: 0.3)
                   : DrColors.border,
               thickness: 1,
             ),
@@ -1113,12 +1119,29 @@ class _ScheduleCard extends StatelessWidget {
         onDone: () async {
           final doc = await FBFireStore.apptAndMeeting.doc(item.docId).get();
           if (doc.exists) {
-            final updated = AppointmentMeetingModel.fromQueryDocumentSnapshot(doc);
+            final updated = AppointmentMeetingModel.fromQueryDocumentSnapshot(
+              doc,
+            );
             onItemUpdated(updated);
           }
         },
       ),
     );
+  }
+
+  Future<void> _checkInAppointment(BuildContext context) async {
+    final ctrl = HomeCtrl.to;
+    final success = await ctrl.checkInAppointment(docId: item.docId);
+    if (success && context.mounted) {
+      AppSnackbar.success(context, 'Checked in successfully.');
+      final doc = await FBFireStore.apptAndMeeting.doc(item.docId).get();
+      if (doc.exists) {
+        final updated = AppointmentMeetingModel.fromQueryDocumentSnapshot(doc);
+        onItemUpdated(updated);
+      }
+    } else if (context.mounted) {
+      AppSnackbar.error(context, 'Something went wrong.');
+    }
   }
 
   void _showDetailsBottomSheet(BuildContext context) {
@@ -1253,41 +1276,88 @@ class _ScheduleCard extends StatelessWidget {
                         content: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              item.personName,
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: DrColors.textPrimary,
-                              ),
-                            ),
-                            if (item.personPhone.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      item.personPhone,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: DrColors.textSecondary,
+                            if (item.persons.isNotEmpty)
+                              ...item.persons.map((p) {
+                                final name = p['personName'] ?? '';
+                                final phone = p['personPhone'] ?? '';
+                                final email = p['personEmail'] ?? '';
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: DrColors.textPrimary,
+                                        ),
                                       ),
-                                    ),
+                                      if (phone.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          phone,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: DrColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                      if (email.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          email,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: DrColors.textTertiary,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ],
-                            if (item.personEmail.isNotEmpty) ...[
-                              const SizedBox(height: 6),
+                                );
+                              }).toList()
+                            else ...[
                               Text(
-                                item.personEmail,
+                                item.personName,
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: DrColors.textTertiary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: DrColors.textPrimary,
                                 ),
                               ),
+                              if (item.personPhone.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item.personPhone,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: DrColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              if (item.personEmail.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  item.personEmail,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: DrColors.textTertiary,
+                                  ),
+                                ),
+                              ],
                             ],
                             if (item.personPhone.isNotEmpty)
                               const SizedBox(height: 8),
@@ -1618,30 +1688,61 @@ class _ScheduleCard extends StatelessWidget {
                           : FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 7),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      // color: _isAppt
-                      //     ? DrColors.primary.withValues(alpha: 0.08)
-                      //     : Colors.green.withValues(alpha: 0.08),
-                      border: Border.all(
-                        color: _isAppt ? DrColors.primary : Colors.green,
-                        // : DrColors.accent.withValues(alpha: 0.5),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: _isAppt ? DrColors.primary : Colors.green,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _isAppt ? 'Appointment' : 'Task',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: _isAppt ? DrColors.primary : Colors.green,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _isAppt ? 'Appointment' : 'Task',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: _isAppt ? DrColors.primary : Colors.green,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                      if (item.checkedIn == true) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: DrColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                size: 12,
+                                color: DrColors.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Arrived',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: DrColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -1662,6 +1763,8 @@ class _ScheduleCard extends StatelessWidget {
                     _openEdit(context);
                   } else if (val == 'status') {
                     _showStatusMenu(context);
+                  } else if (val == 'check_in') {
+                    _checkInAppointment(context);
                   }
                 },
                 itemBuilder: (ctx) => [
@@ -1681,6 +1784,29 @@ class _ScheduleCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (_isAppt &&
+                      item.status == 'Scheduled' &&
+                      item.checkedIn != true)
+                    PopupMenuItem(
+                      value: 'check_in',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.login_rounded,
+                            size: 16,
+                            color: _typeColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Check In',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   PopupMenuItem(
                     value: 'status',
                     child: Row(

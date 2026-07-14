@@ -348,8 +348,7 @@ class _FullScreenTimePickerState extends State<FullScreenTimePicker> {
             // Header Display Area
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 GestureDetector(
                   onTap: () => setState(() => _pickingHours = true),
@@ -385,14 +384,72 @@ class _FullScreenTimePickerState extends State<FullScreenTimePicker> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  _period,
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.orange,
-                  ),
+                const SizedBox(width: 16),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() => _period = 'AM'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _period == 'AM'
+                              ? Colors.orange
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: _period == 'AM'
+                                ? Colors.orange
+                                : Colors.grey.shade300,
+                          ),
+                        ),
+                        child: Text(
+                          'AM',
+                          style: GoogleFonts.inter(
+                            color: _period == 'AM'
+                                ? Colors.white
+                                : Colors.grey.shade600,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: () => setState(() => _period = 'PM'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _period == 'PM'
+                              ? Colors.orange
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: _period == 'PM'
+                                ? Colors.orange
+                                : Colors.grey.shade300,
+                          ),
+                        ),
+                        child: Text(
+                          'PM',
+                          style: GoogleFonts.inter(
+                            color: _period == 'PM'
+                                ? Colors.white
+                                : Colors.grey.shade600,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -413,6 +470,28 @@ class _FullScreenTimePickerState extends State<FullScreenTimePicker> {
                     final dx = details.localPosition.dx - center;
                     final dy = details.localPosition.dy - center;
                     _handleDialSelection(dx, dy, center);
+                  },
+                  onPanEnd: (_) {
+                    if (_pickingHours) {
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        if (mounted) {
+                          setState(() {
+                            _pickingHours = false;
+                          });
+                        }
+                      });
+                    }
+                  },
+                  onTapUp: (_) {
+                    if (_pickingHours) {
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        if (mounted) {
+                          setState(() {
+                            _pickingHours = false;
+                          });
+                        }
+                      });
+                    }
                   },
                   child: Stack(
                     children: [
@@ -440,78 +519,7 @@ class _FullScreenTimePickerState extends State<FullScreenTimePicker> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-
-            // AM/PM Selectors
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => _period = 'AM'),
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: _period == 'AM'
-                            ? Colors.orange
-                            : Colors.transparent,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _period == 'AM'
-                              ? Colors.orange
-                              : Colors.grey.shade300,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'am',
-                          style: GoogleFonts.inter(
-                            color: _period == 'AM'
-                                ? Colors.white
-                                : Colors.grey.shade600,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => setState(() => _period = 'PM'),
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: _period == 'PM'
-                            ? Colors.orange
-                            : Colors.transparent,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _period == 'PM'
-                              ? Colors.orange
-                              : Colors.grey.shade300,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'pm',
-                          style: GoogleFonts.inter(
-                            color: _period == 'PM'
-                                ? Colors.white
-                                : Colors.grey.shade600,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 32),
 
             // Set Duration Section
             Container(

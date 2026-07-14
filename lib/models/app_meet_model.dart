@@ -40,6 +40,8 @@ class AppointmentMeetingModel {
   final DateTime? completedAt;
 
   final bool showOnReception;
+  final List<Map<String, dynamic>> persons;
+  final bool? checkedIn;
 
   AppointmentMeetingModel({
     required this.docId,
@@ -67,6 +69,8 @@ class AppointmentMeetingModel {
     this.summary,
     this.completedAt,
     required this.showOnReception,
+    this.persons = const [],
+    this.checkedIn,
   });
 
   factory AppointmentMeetingModel.fromJson(Map<String, dynamic> json) {
@@ -96,6 +100,11 @@ class AppointmentMeetingModel {
       summary: json['summary'],
       completedAt: (json['completedAt'] as Timestamp?)?.toDate(),
       showOnReception: json['showOnReception'] ?? true,
+      persons: (json['persons'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e))
+              .toList() ??
+          const [],
+      checkedIn: json['checkedIn'],
     );
   }
 
@@ -129,6 +138,11 @@ class AppointmentMeetingModel {
       summary: json['summary'],
       completedAt: (json['completedAt'] as Timestamp?)?.toDate(),
       showOnReception: json['showOnReception'] ?? true,
+      persons: (json['persons'] as List?)
+              ?.map((e) => Map<String, dynamic>.from(e))
+              .toList() ??
+          const [],
+      checkedIn: json['checkedIn'],
     );
   }
 
@@ -160,6 +174,8 @@ class AppointmentMeetingModel {
       'completedAt':
           completedAt != null ? Timestamp.fromDate(completedAt!) : null,
       'showOnReception': showOnReception,
+      'persons': persons,
+      'checkedIn': checkedIn,
     };
   }
 
@@ -189,6 +205,8 @@ class AppointmentMeetingModel {
     String? summary,
     DateTime? completedAt,
     bool? showOnReception,
+    List<Map<String, dynamic>>? persons,
+    bool? checkedIn,
   }) {
     return AppointmentMeetingModel(
       docId: docId ?? this.docId,
@@ -216,6 +234,8 @@ class AppointmentMeetingModel {
       summary: summary ?? this.summary,
       completedAt: completedAt ?? this.completedAt,
       showOnReception: showOnReception ?? this.showOnReception,
+      persons: persons ?? this.persons,
+      checkedIn: checkedIn ?? this.checkedIn,
     );
   }
 }

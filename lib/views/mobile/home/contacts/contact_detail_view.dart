@@ -392,325 +392,331 @@ class _ContactDetailViewState extends State<ContactDetailView> {
           ],
         ),
         body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Contact card ─────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: DrColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: DrColors.border.withValues(alpha: 0.8),
-                      width: 0.5,
-                    ),
-                    // boxShadow: [
-                    //   BoxShadow(
-                    //     color: Colors.black.withValues(alpha: 0.03),
-                    //     blurRadius: 12,
-                    //     offset: const Offset(0, 4),
-                    //   ),
-                    // ],
-                  ),
-                  child: Row(
-                    children: [
-                      // Avatar (Modern Circle with soft accent color)
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: contact.typeColor.withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            contact.initials,
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: contact.typeColor,
-                            ),
-                          ),
-                        ),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Contact card ─────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: DrColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: DrColors.border.withValues(alpha: 0.8),
+                        width: 0.5,
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              contact.name,
+                      // boxShadow: [
+                      //   BoxShadow(
+                      //     color: Colors.black.withValues(alpha: 0.03),
+                      //     blurRadius: 12,
+                      //     offset: const Offset(0, 4),
+                      //   ),
+                      // ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Avatar (Modern Circle with soft accent color)
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: contact.typeColor.withValues(alpha: 0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              contact.initials,
                               style: GoogleFonts.inter(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
-                                color: DrColors.textPrimary,
+                                color: contact.typeColor,
                               ),
-                            ),
-                            if (contact.email.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.email_outlined,
-                                    size: 13,
-                                    color: DrColors.textTertiary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      contact.email,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: DrColors.textSecondary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            if (contact.phone.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.phone_outlined,
-                                    size: 13,
-                                    color: DrColors.textTertiary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    contact.phone,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: DrColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      if (contact.phone.isNotEmpty) ...[
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () => _call(contact.phone),
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: DrColors.primary.withValues(alpha: 0.08),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.call_rounded,
-                              size: 18,
-                              color: DrColors.primary,
                             ),
                           ),
                         ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                contact.name,
+                                style: GoogleFonts.inter(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: DrColors.textPrimary,
+                                ),
+                              ),
+                              if (contact.email.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.email_outlined,
+                                      size: 13,
+                                      color: DrColors.textTertiary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        contact.email,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: DrColors.textSecondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              if (contact.phone.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.phone_outlined,
+                                      size: 13,
+                                      color: DrColors.textTertiary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      contact.phone,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: DrColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (contact.phone.isNotEmpty) ...[
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () => _call(contact.phone),
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: DrColors.primary.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.call_rounded,
+                                size: 18,
+                                color: DrColors.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _whatsapp(contact.phone),
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF25D366,
+                                ).withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(10),
+                              child: Image.asset(
+                                'assets/whatsapp.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: DrColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: DrColors.border.withValues(alpha: 0.8),
+                              width: 1,
+                            ),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<_TimeFilter>(
+                              dropdownColor: Colors.white,
+                              value: _filter,
+                              isExpanded: true,
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: DrColors.textSecondary,
+                              ),
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: DrColors.textPrimary,
+                              ),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  _changeFilter(val);
+                                }
+                              },
+                              items: _buildDropdownItems(),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_filter == _TimeFilter.custom &&
+                          _customRange != null) ...[
                         const SizedBox(width: 8),
                         GestureDetector(
-                          onTap: () => _whatsapp(contact.phone),
+                          onTap: () => _changeFilter(_TimeFilter.custom),
                           child: Container(
-                            width: 42,
-                            height: 42,
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF25D366,
-                              ).withValues(alpha: 0.08),
+                              color: DrColors.primary.withValues(alpha: 0.08),
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: DrColors.primary.withValues(alpha: 0.12),
+                                width: 0.5,
+                              ),
                             ),
-                            padding: const EdgeInsets.all(10),
-                            child: Image.asset(
-                              'assets/whatsapp.png',
-                              fit: BoxFit.contain,
+                            child: const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 16,
+                              color: DrColors.primary,
                             ),
                           ),
                         ),
                       ],
                     ],
                   ),
-                ),
+                ],
+              ),
+            ),
 
-                const SizedBox(height: 15),
+            const SizedBox(height: 15),
+            Divider(height: 0),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: DrColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: DrColors.border.withValues(alpha: 0.8),
-                            width: 1,
-                          ),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<_TimeFilter>(
-                            dropdownColor: Colors.white,
-                            value: _filter,
-                            isExpanded: true,
-                            icon: const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: DrColors.textSecondary,
+            // ── Records list ────────────────────────────────────────
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: DrColors.primary,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : filtered.isEmpty
+                  ? _EmptyRecords(filter: _filter, customRange: _customRange)
+                  : ListView.separated(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                      itemCount: filtered.length + (_hasMore ? 1 : 0),
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) {
+                        if (i == filtered.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: DrColors.primary,
+                                strokeWidth: 2.5,
+                              ),
                             ),
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: DrColors.textPrimary,
-                            ),
-                            onChanged: (val) {
-                              if (val != null) {
-                                _changeFilter(val);
-                              }
-                            },
-                            items: _buildDropdownItems(),
-                          ),
-                        ),
+                          );
+                        }
+                        final record = filtered[i];
+                        final DateTime currentDate = _dateOnly(
+                          record.startTime,
+                        );
+                        bool showHeader = false;
+                        if (i == 0) {
+                          showHeader = true;
+                        } else {
+                          final prevRecord = filtered[i - 1];
+                          final DateTime prevDate = _dateOnly(
+                            prevRecord.startTime,
+                          );
+                          if (currentDate != prevDate) {
+                            showHeader = true;
+                          }
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (showHeader)
+                              _DateHeader(
+                                label: _formatDateHeader(record.startTime),
+                              ),
+                            _RecordCard(record: record),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: DrColors.border, width: 0.5)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: _addTask,
+                    child: Text(
+                      'ADD TASK',
+                      style: GoogleFonts.inter(
+                        color: DrColors.accent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                    if (_filter == _TimeFilter.custom &&
-                        _customRange != null) ...[
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => _changeFilter(_TimeFilter.custom),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: DrColors.primary.withValues(alpha: 0.08),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: DrColors.primary.withValues(alpha: 0.12),
-                              width: 0.5,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.calendar_today_rounded,
-                            size: 16,
-                            color: DrColors.primary,
-                          ),
-                        ),
+                  ),
+                ),
+                Container(width: 1, height: 24, color: DrColors.border),
+                Expanded(
+                  child: TextButton(
+                    onPressed: _addAppointment,
+                    child: Text(
+                      'ADD APPOINTMENT',
+                      style: GoogleFonts.inter(
+                        color: DrColors.accent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
                       ),
-                    ],
-                  ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: 15),
-          Divider(height: 0),
-
-          // ── Records list ────────────────────────────────────────
-          Expanded(
-            child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: DrColors.primary,
-                      strokeWidth: 2.5,
-                    ),
-                  )
-                : filtered.isEmpty
-                ? _EmptyRecords(filter: _filter, customRange: _customRange)
-                : ListView.separated(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-                    itemCount: filtered.length + (_hasMore ? 1 : 0),
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) {
-                      if (i == filtered.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: DrColors.primary,
-                              strokeWidth: 2.5,
-                            ),
-                          ),
-                        );
-                      }
-                      final record = filtered[i];
-                      final DateTime currentDate = _dateOnly(record.startTime);
-                      bool showHeader = false;
-                      if (i == 0) {
-                        showHeader = true;
-                      } else {
-                        final prevRecord = filtered[i - 1];
-                        final DateTime prevDate = _dateOnly(prevRecord.startTime);
-                        if (currentDate != prevDate) {
-                          showHeader = true;
-                        }
-                      }
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (showHeader)
-                            _DateHeader(label: _formatDateHeader(record.startTime)),
-                          _RecordCard(record: record),
-                        ],
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: DrColors.border, width: 0.5)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: _addTask,
-                  child: Text(
-                    'ADD TASK',
-                    style: GoogleFonts.inter(
-                      color: DrColors.accent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-              Container(width: 1, height: 24, color: DrColors.border),
-              Expanded(
-                child: TextButton(
-                  onPressed: _addAppointment,
-                  child: Text(
-                    'ADD APPOINTMENT',
-                    style: GoogleFonts.inter(
-                      color: DrColors.accent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -801,7 +807,7 @@ class _RecordCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _isAppt ? 'Appointment Detail' : 'Meeting Detail',
+                          _isAppt ? 'Appointment Detail' : 'Task Detail',
                           style: GoogleFonts.inter(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -872,7 +878,7 @@ class _RecordCard extends StatelessWidget {
                         icon: _isAppt
                             ? Icons.person_rounded
                             : Icons.groups_rounded,
-                        label: _isAppt ? 'Patient' : 'Meeting Person',
+                        label: _isAppt ? 'Patient' : 'Person',
                         themeColor: themeColor,
                         isLast: false,
                         content: Text(
@@ -1097,7 +1103,7 @@ class _RecordCard extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  _isAppt ? 'Appointment' : 'Meeting',
+                                  _isAppt ? 'Appointment' : 'Task',
                                   style: GoogleFonts.inter(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,

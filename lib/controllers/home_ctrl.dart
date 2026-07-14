@@ -280,7 +280,8 @@ class HomeCtrl extends GetxController {
   Future<bool> createAppointment(AppointmentMeetingModel appt) async {
     try {
       final ref = FBFireStore.apptAndMeeting.doc();
-      await ref.set({...appt.toJson(), 'docId': ref.id});
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
+      await ref.set({...appt.toJson(), 'docId': ref.id, 'updatedById': doctorId});
       return true;
     } catch (e) {
       debugPrint(e.toString());
@@ -290,7 +291,8 @@ class HomeCtrl extends GetxController {
 
   Future<bool> updateAppointment(AppointmentMeetingModel appt) async {
     try {
-      await FBFireStore.apptAndMeeting.doc(appt.docId).update(appt.toJson());
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
+      await FBFireStore.apptAndMeeting.doc(appt.docId).update({...appt.toJson(), 'updatedById': doctorId});
       return true;
     } catch (e) {
       debugPrint(e.toString());
@@ -303,11 +305,14 @@ class HomeCtrl extends GetxController {
     required String reason,
   }) async {
     try {
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
       final doctorName =
           AuthCtrl.to.currentDoctor?.name ?? AuthCtrl.to.enteredEmail;
       await FBFireStore.apptAndMeeting.doc(docId).update({
         'status': 'Cancelled',
         'cancelledBy': doctorName,
+        'cancelledById': doctorId,
+        'updatedById': doctorId,
         'cancellationReason': reason,
         'cancelledAt': Timestamp.fromDate(DateTime.now()),
       });
@@ -323,13 +328,32 @@ class HomeCtrl extends GetxController {
     String summary = '',
   }) async {
     try {
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
       final doctorName =
           AuthCtrl.to.currentDoctor?.name ?? AuthCtrl.to.enteredEmail;
       await FBFireStore.apptAndMeeting.doc(docId).update({
         'status': 'Completed',
         'completedBy': doctorName,
+        'updatedById': doctorId,
         'summary': summary,
         'completedAt': Timestamp.fromDate(DateTime.now()),
+      });
+      return true;
+    } catch (e) {
+      debugPrint(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> checkInAppointment({
+    required String docId,
+  }) async {
+    try {
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
+      await FBFireStore.apptAndMeeting.doc(docId).update({
+        'checkedIn': true,
+        'checkedInAt': Timestamp.fromDate(DateTime.now()),
+        'updatedById': doctorId,
       });
       return true;
     } catch (e) {
@@ -358,7 +382,8 @@ class HomeCtrl extends GetxController {
   Future<bool> createMeeting(AppointmentMeetingModel meeting) async {
     try {
       final ref = FBFireStore.apptAndMeeting.doc();
-      await ref.set({...meeting.toJson(), 'docId': ref.id});
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
+      await ref.set({...meeting.toJson(), 'docId': ref.id, 'updatedById': doctorId});
       return true;
     } catch (e) {
       debugPrint(e.toString());
@@ -368,9 +393,10 @@ class HomeCtrl extends GetxController {
 
   Future<bool> updateMeeting(AppointmentMeetingModel meeting) async {
     try {
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
       await FBFireStore.apptAndMeeting
           .doc(meeting.docId)
-          .update(meeting.toJson());
+          .update({...meeting.toJson(), 'updatedById': doctorId});
       return true;
     } catch (e) {
       debugPrint(e.toString());
@@ -383,11 +409,14 @@ class HomeCtrl extends GetxController {
     required String reason,
   }) async {
     try {
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
       final doctorName =
           AuthCtrl.to.currentDoctor?.name ?? AuthCtrl.to.enteredEmail;
       await FBFireStore.apptAndMeeting.doc(docId).update({
         'status': 'Cancelled',
         'cancelledBy': doctorName,
+        'cancelledById': doctorId,
+        'updatedById': doctorId,
         'cancellationReason': reason,
         'cancelledAt': Timestamp.fromDate(DateTime.now()),
       });
@@ -465,11 +494,13 @@ class HomeCtrl extends GetxController {
     String summary = '',
   }) async {
     try {
+      final doctorId = AuthCtrl.to.currentDoctor?.docId;
       final doctorName =
           AuthCtrl.to.currentDoctor?.name ?? AuthCtrl.to.enteredEmail;
       await FBFireStore.apptAndMeeting.doc(docId).update({
         'status': 'Completed',
         'completedBy': doctorName,
+        'updatedById': doctorId,
         'summary': summary,
         'completedAt': Timestamp.fromDate(DateTime.now()),
       });
@@ -758,10 +789,11 @@ class HomeCtrl extends GetxController {
     required DateTime newStart,
     required DateTime newEnd,
     String excludeDocId = '',
+    String? doctorId,
   }) async {
-    final doctorId = AuthCtrl.to.currentDoctor?.docId ?? '';
+    final docId = doctorId ?? AuthCtrl.to.currentDoctor?.docId ?? '';
     final snap = await FBFireStore.apptAndMeeting
-        .where('doctorId', isEqualTo: doctorId)
+        .where('doctorId', isEqualTo: docId)
         .where('status', isEqualTo: 'Scheduled')
         .where('startTime', isLessThan: Timestamp.fromDate(newEnd))
         .get();

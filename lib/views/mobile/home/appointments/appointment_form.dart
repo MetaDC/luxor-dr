@@ -6,6 +6,7 @@ import '../../../../controllers/auth_ctrl.dart';
 import '../../../../controllers/home_ctrl.dart';
 import '../../../../models/app_meet_model.dart';
 import '../../../../models/patient_model.dart';
+import '../../../../models/doctor_model.dart';
 import '../../../../utils/app_theme.dart';
 import '../../../../utils/firebase.dart';
 import '../../../../widgets/app_snackbar.dart';
@@ -27,11 +28,13 @@ class AppointmentFormSheet extends StatefulWidget {
   final AppointmentMeetingModel? appointment;
   final PatientModel? initialPatient;
   final DateTime? initialDate;
+  final DoctorModel? initialDoctor;
   const AppointmentFormSheet({
     super.key,
     this.appointment,
     this.initialPatient,
     this.initialDate,
+    this.initialDoctor,
   });
 
   @override
@@ -42,7 +45,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   final _formKey = GlobalKey<FormState>();
   final _ctrl = HomeCtrl.to;
 
-  PatientModel? _patient;
+  List<PatientModel> _selectedPatients = [];
   String _apptType = 'Consultation';
   DateTime? _date;
   TimeOfDay? _startTOD;
@@ -50,6 +53,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   bool _loading = false;
+  DoctorModel? _selectedDoctor;
 
   DateTime? get _startTime => _date != null && _startTOD != null
       ? DateTime(
@@ -90,8 +94,33 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
   @override
   void initState() {
     super.initState();
-    _patient = widget.initialPatient;
+    if (widget.initialPatient != null) {
+      _selectedPatients = [widget.initialPatient!];
+    }
     _prefill();
+
+    final appt = widget.appointment;
+    if (appt != null) {
+      _selectedDoctor =
+          AuthCtrl.to.allDoctors.cast<DoctorModel?>().firstWhere(
+            (d) => d?.docId == appt.doctorId,
+            orElse: () => null,
+          ) ??
+          DoctorModel(
+            docId: appt.doctorId,
+            name: appt.doctorName,
+            lowerName: appt.doctorName.toLowerCase(),
+            specialization: appt.specialization,
+            email: '',
+            phone: '',
+            manageByIds: [],
+            token: '',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+    } else {
+      _selectedDoctor = widget.initialDoctor ?? AuthCtrl.to.currentDoctor;
+    }
 
     if (_date == null) {
       _date = widget.initialDate ?? DateTime.now();
@@ -133,11 +162,24 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     _endTOD = TimeOfDay.fromDateTime(a.endTime);
     _titleCtrl.text = a.shortDescription ?? '';
     _descCtrl.text = a.description ?? '';
-    if (a.personId.isNotEmpty) {
+    if (a.persons.isNotEmpty) {
+      _selectedPatients = a.persons.map((p) {
+        return PatientModel(
+          docId: p['personId'] ?? '',
+          name: p['personName'] ?? '',
+          lowerName: (p['personName'] ?? '').toLowerCase(),
+          email: p['personEmail'] ?? '',
+          phone: p['personPhone'] ?? '',
+          createdByRole: '',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      }).toList();
+    } else if (a.personId.isNotEmpty) {
       FBFireStore.patients.doc(a.personId).get().then((snap) {
         if (snap.exists && mounted) {
           setState(() {
-            _patient = PatientModel.fromJson(snap.data()!);
+            _selectedPatients = [PatientModel.fromJson(snap.data()!)];
           });
         }
       });
@@ -215,7 +257,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_patient == null) {
+    if (_selectedPatients.isEmpty) {
       AppSnackbar.error(context, 'Please select a patient.');
       return;
     }
@@ -243,6 +285,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
       newStart: _startTime!,
       newEnd: _endTime!,
       excludeDocId: widget.appointment?.docId ?? '',
+      doctorId: _selectedDoctor?.docId,
     );
 
     if (!mounted) return;
@@ -257,7 +300,7 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
     }
 
     setState(() => _loading = true);
-    final doctor = AuthCtrl.to.currentDoctor!;
+    final doctor = _selectedDoctor!;
     final now = DateTime.now();
 
     final appt = AppointmentMeetingModel(
@@ -267,10 +310,10 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
       specialization: doctor.specialization,
       docType: 'appointment',
       type: _apptType,
-      personId: _patient!.docId,
-      personName: _patient!.name,
-      personPhone: _patient!.phone,
-      personEmail: _patient!.email,
+      personId: _selectedPatients.first.docId,
+      personName: _selectedPatients.map((p) => p.name).join(', '),
+      personPhone: _selectedPatients.first.phone,
+      personEmail: _selectedPatients.first.email,
       startTime: _startTime!,
       endTime: _endTime!,
       status: widget.appointment?.status ?? 'Scheduled',
@@ -288,6 +331,12 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
       summary: widget.appointment?.summary,
       completedAt: widget.appointment?.completedAt,
       showOnReception: true,
+      persons: _selectedPatients.map((p) => {
+        'personId': p.docId,
+        'personName': p.name,
+        'personPhone': p.phone,
+        'personEmail': p.email,
+      }).toList(),
     );
 
     final ok = widget.appointment == null
@@ -364,16 +413,16 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                     children: [
                       // Patient Name (via Autocomplete selector)
                       _PatientSelector(
-                        selected: _patient,
-                        onChanged: (p) => setState(() => _patient = p),
+                        selected: _selectedPatients,
+                        onChanged: (list) => setState(() => _selectedPatients = list),
                       ),
                       const SizedBox(height: 16),
 
                       // Mobile Number (Read-only/auto-filled)
                       TextFormField(
-                        key: ValueKey(_patient?.docId),
+                        key: ValueKey(_selectedPatients.map((p) => p.docId).join(',')),
                         readOnly: true,
-                        initialValue: _patient?.phone ?? '',
+                        initialValue: _selectedPatients.map((p) => p.phone).join(', '),
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           color: DrColors.textPrimary,
@@ -404,39 +453,62 @@ class _AppointmentFormSheetState extends State<AppointmentFormSheet> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Doctor Name (Read-only)
-                      TextFormField(
-                        readOnly: true,
-                        controller: TextEditingController(
-                          text: doctor?.name ?? 'Dr Saumya Nayak',
-                        ),
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          color: DrColors.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Doctor Name',
-                          labelStyle: GoogleFonts.inter(
-                            color: DrColors.textSecondary,
-                            fontSize: 13,
-                          ),
-                          floatingLabelBehavior: FloatingLabelBehavior.always,
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: DrColors.border,
-                              width: 1.0,
+                      // Doctor Selection Dropdown
+                      GetBuilder<AuthCtrl>(
+                        builder: (auth) {
+                          final doctors = auth.allDoctors;
+                          final dropdownItems =
+                              doctors.contains(_selectedDoctor)
+                              ? doctors
+                              : (_selectedDoctor != null
+                                    ? [...doctors, _selectedDoctor!]
+                                    : doctors);
+
+                          return DropdownButtonFormField<DoctorModel>(
+                            value: _selectedDoctor,
+                            decoration: InputDecoration(
+                              labelText: 'Doctor *',
+                              labelStyle: GoogleFonts.inter(
+                                color: DrColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.always,
+                              enabledBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DrColors.border,
+                                  width: 1.0,
+                                ),
+                              ),
+                              focusedBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DrColors.primary,
+                                  width: 1.5,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 4,
+                              ),
                             ),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: DrColors.primary,
-                              width: 1.5,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 4,
-                          ),
-                        ),
+                            items: dropdownItems.map((doc) {
+                              return DropdownMenuItem<DoctorModel>(
+                                value: doc,
+                                child: Text(
+                                  doc.name,
+                                  style: GoogleFonts.inter(fontSize: 14),
+                                ),
+                              );
+                            }).toList(),
+                            validator: (v) => v == null ? 'Required' : null,
+                            onChanged: (newDoc) {
+                              if (newDoc != null) {
+                                setState(() {
+                                  _selectedDoctor = newDoc;
+                                });
+                              }
+                            },
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
 
@@ -697,8 +769,8 @@ final _kNoPatient = PatientModel(
 );
 
 class _PatientSelector extends StatefulWidget {
-  final PatientModel? selected;
-  final void Function(PatientModel?) onChanged;
+  final List<PatientModel> selected;
+  final void Function(List<PatientModel>) onChanged;
 
   const _PatientSelector({required this.selected, required this.onChanged});
 
@@ -707,19 +779,22 @@ class _PatientSelector extends StatefulWidget {
 }
 
 class _PatientSelectorState extends State<_PatientSelector> {
-  PatientModel? _current;
+  List<PatientModel> _selectedList = [];
   String _query = '';
+  TextEditingController? _typeAheadController;
 
   @override
   void initState() {
     super.initState();
-    _current = widget.selected;
+    _selectedList = List.from(widget.selected);
   }
 
   @override
   void didUpdateWidget(_PatientSelector old) {
     super.didUpdateWidget(old);
-    if (widget.selected != old.selected) _current = widget.selected;
+    if (widget.selected != old.selected) {
+      _selectedList = List.from(widget.selected);
+    }
   }
 
   Future<Iterable<PatientModel>> _search(String q) async {
@@ -740,11 +815,14 @@ class _PatientSelectorState extends State<_PatientSelector> {
       builder: (_) => const _QuickCreatePatientDialog(),
     );
     if (p != null) {
-      setState(() {
-        _current = p;
-        _query = '';
-      });
-      widget.onChanged(p);
+      if (!_selectedList.any((e) => e.docId == p.docId)) {
+        setState(() {
+          _selectedList.add(p);
+          _query = '';
+        });
+        _typeAheadController?.clear();
+        widget.onChanged(_selectedList);
+      }
     }
   }
 
@@ -758,18 +836,19 @@ class _PatientSelectorState extends State<_PatientSelector> {
           children: [
             Expanded(
               child: Autocomplete<PatientModel>(
-                key: ValueKey(_current?.docId),
-                initialValue: TextEditingValue(text: _current?.name ?? ''),
                 displayStringForOption: (p) =>
                     p.docId == '__no_result__' ? '' : p.name,
                 optionsBuilder: (v) => _search(v.text),
                 onSelected: (p) {
                   if (p.docId == '__no_result__') return;
-                  setState(() {
-                    _current = p;
-                    _query = '';
-                  });
-                  widget.onChanged(p);
+                  if (!_selectedList.any((e) => e.docId == p.docId)) {
+                    setState(() {
+                      _selectedList.add(p);
+                      _query = '';
+                    });
+                    widget.onChanged(_selectedList);
+                  }
+                  _typeAheadController?.clear();
                 },
                 optionsViewBuilder: (ctx, onSel, options) =>
                     _OptionsView<PatientModel>(
@@ -781,79 +860,92 @@ class _PatientSelectorState extends State<_PatientSelector> {
                       subOf: (p) => p.phone,
                       idOf: (p) => p.docId,
                     ),
-                fieldViewBuilder: (ctx, ctrl, fn, _) => TextFormField(
-                  controller: ctrl,
-                  focusNode: fn,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    color: DrColors.textPrimary,
-                  ),
-                  onChanged: (v) {
-                    if (v.isEmpty) {
-                      setState(() {
-                        _current = null;
-                        _query = '';
-                      });
-                      widget.onChanged(null);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Patient Name *',
-                    labelStyle: GoogleFonts.inter(
-                      color: DrColors.textSecondary,
-                      fontSize: 13,
+                fieldViewBuilder: (ctx, ctrl, fn, _) {
+                  _typeAheadController = ctrl;
+                  return TextFormField(
+                    controller: ctrl,
+                    focusNode: fn,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      color: DrColors.textPrimary,
                     ),
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                    enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: DrColors.border,
-                        width: 1.0,
+                    decoration: InputDecoration(
+                      labelText: 'Patient Name *',
+                      labelStyle: GoogleFonts.inter(
+                        color: DrColors.textSecondary,
+                        fontSize: 13,
                       ),
-                    ),
-                    focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: DrColors.primary,
-                        width: 1.5,
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: DrColors.border,
+                          width: 1.0,
+                        ),
                       ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_current != null)
-                          IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 16),
-                            onPressed: () {
-                              ctrl.clear();
-                              setState(() {
-                                _current = null;
-                                _query = '';
-                              });
-                              widget.onChanged(null);
-                            },
-                          ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.person_add_alt_1_rounded,
-                            size: 20,
-                          ),
-                          onPressed: _quickCreate,
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(
                           color: DrColors.primary,
+                          width: 1.5,
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.account_circle_rounded,
-                          color: DrColors.textTertiary,
-                          size: 32,
-                        ),
-                      ],
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.person_add_alt_1_rounded,
+                              size: 20,
+                            ),
+                            onPressed: _quickCreate,
+                            color: DrColors.primary,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
         ),
+        if (_selectedList.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _selectedList.map((p) {
+              return Chip(
+                backgroundColor: DrColors.accentLight,
+                label: Text(
+                  p.phone.isNotEmpty ? '${p.name} (${p.phone})' : p.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: DrColors.textPrimary,
+                  ),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: DrColors.accent.withValues(alpha: 0.2),
+                  ),
+                ),
+                deleteIcon: const Icon(
+                  Icons.close_rounded,
+                  size: 14,
+                  color: DrColors.accent,
+                ),
+                onDeleted: () {
+                  setState(() {
+                    _selectedList.removeWhere((e) => e.docId == p.docId);
+                  });
+                  widget.onChanged(_selectedList);
+                },
+              );
+            }).toList(),
+          ),
+        ],
       ],
     );
   }

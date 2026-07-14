@@ -454,7 +454,7 @@ class _MeetingCard extends StatelessWidget {
     if (meeting.status == 'Cancelled' || meeting.status == 'Completed') {
       AppSnackbar.info(
         context,
-        'This meeting is already ${meeting.status.toLowerCase()}.',
+        'This task is already ${meeting.status.toLowerCase()}.',
       );
       return;
     }
@@ -494,7 +494,7 @@ class _MeetingCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Meeting Detail',
+                            'Task Detail',
                             style: GoogleFonts.inter(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
@@ -536,8 +536,16 @@ class _MeetingCard extends StatelessWidget {
                 if (meeting.personName.isNotEmpty) ...[
                   _buildDetailRow(
                     Icons.groups_outlined,
-                    'Meeting Person',
-                    meeting.personName,
+                    'Task Person',
+                    meeting.persons.isNotEmpty
+                        ? meeting.persons
+                            .map((p) => p['personPhone']?.isNotEmpty == true
+                                ? "${p['personName']} (${p['personPhone']})"
+                                : "${p['personName']}")
+                            .join(', ')
+                        : (meeting.personPhone.isNotEmpty
+                            ? "${meeting.personName} (${meeting.personPhone})"
+                            : meeting.personName),
                   ),
                   const SizedBox(height: 16),
                 ],

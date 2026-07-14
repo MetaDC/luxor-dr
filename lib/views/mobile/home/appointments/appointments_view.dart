@@ -541,7 +541,15 @@ class _AppointmentCard extends StatelessWidget {
                 _buildDetailRow(
                   Icons.person_outline_rounded,
                   'Patient',
-                  appt.personName,
+                  appt.persons.isNotEmpty
+                      ? appt.persons
+                          .map((p) => p['personPhone']?.isNotEmpty == true
+                              ? "${p['personName']} (${p['personPhone']})"
+                              : "${p['personName']}")
+                          .join(', ')
+                      : (appt.personPhone.isNotEmpty
+                          ? "${appt.personName} (${appt.personPhone})"
+                          : appt.personName),
                 ),
                 const SizedBox(height: 16),
                 _buildDetailRow(
