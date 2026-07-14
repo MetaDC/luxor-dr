@@ -54,6 +54,8 @@ class _ScheduleViewState extends State<ScheduleView> {
 
   List<AppointmentMeetingModel> _fetched = [];
   bool _loading = false;
+  bool _isViewingUpcoming = false;
+  bool get _showViewAllButton => _isToday(_selectedDate) && !_isViewingUpcoming;
 
   static const _statuses = ['Scheduled', 'Completed', 'Cancelled', 'All'];
 
@@ -137,8 +139,9 @@ class _ScheduleViewState extends State<ScheduleView> {
       _loading = true;
       _fetched = [];
       _lastDoc = null;
-      _hasMore = true;
+      _hasMore = false;
       _isLoadingMore = false;
+      _isViewingUpcoming = false;
     });
 
     final start = DateTime(
@@ -147,9 +150,8 @@ class _ScheduleViewState extends State<ScheduleView> {
       _selectedDate.day,
     );
 
-    final DateTime? end = !_isToday(_selectedDate)
-        ? start.add(const Duration(days: 1))
-        : null;
+    final DateTime end = start.add(const Duration(days: 1));
+    final int limit = _isToday(_selectedDate) ? 100 : _pageSize;
 
     final res = await HomeCtrl.to.fetchSchedulePage(
       docTypeFilter: _typeFilter == _TypeFilter.appointments
@@ -160,7 +162,7 @@ class _ScheduleViewState extends State<ScheduleView> {
       statusFilter: _statusFilter,
       startDateTime: start,
       endDateTime: end,
-      limit: _pageSize,
+      limit: limit,
     );
 
     if (!mounted) return;
@@ -168,8 +170,53 @@ class _ScheduleViewState extends State<ScheduleView> {
     setState(() {
       _fetched = List<AppointmentMeetingModel>.from(res['items']);
       _lastDoc = res['lastDoc'] as DocumentSnapshot?;
-      _hasMore = _fetched.length >= _pageSize;
+      _hasMore = !_isToday(_selectedDate)
+          ? (_fetched.length >= _pageSize)
+          : false;
       _loading = false;
+    });
+  }
+
+  Future<void> _fetchUpcomingSchedule() async {
+    if (_loading || _isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      _isViewingUpcoming = true;
+    });
+
+    final todayStart = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final tomorrowStart = todayStart.add(const Duration(days: 1));
+
+    final res = await HomeCtrl.to.fetchSchedulePage(
+      docTypeFilter: _typeFilter == _TypeFilter.appointments
+          ? 'appointment'
+          : _typeFilter == _TypeFilter.meetings
+          ? 'meeting'
+          : 'all',
+      statusFilter: _statusFilter,
+      startDateTime: tomorrowStart,
+      endDateTime: null,
+      limit: _pageSize,
+    );
+
+    if (!mounted) return;
+
+    final newItems = List<AppointmentMeetingModel>.from(res['items']);
+    setState(() {
+      for (final item in newItems) {
+        if (!_fetched.any((e) => e.docId == item.docId)) {
+          _fetched.add(item);
+        }
+      }
+      _fetched.sort((a, b) => a.startTime.compareTo(b.startTime));
+      _lastDoc = res['lastDoc'] as DocumentSnapshot?;
+      _hasMore = newItems.length >= _pageSize;
+      _isLoadingMore = false;
     });
   }
 
@@ -186,9 +233,15 @@ class _ScheduleViewState extends State<ScheduleView> {
       _selectedDate.day,
     );
 
-    final DateTime? end = !_isToday(_selectedDate)
-        ? start.add(const Duration(days: 1))
-        : null;
+    final DateTime? end;
+    final DateTime startQueryDate;
+    if (_isToday(_selectedDate)) {
+      startQueryDate = start.add(const Duration(days: 1));
+      end = null;
+    } else {
+      startQueryDate = start;
+      end = start.add(const Duration(days: 1));
+    }
 
     final res = await HomeCtrl.to.fetchSchedulePage(
       docTypeFilter: _typeFilter == _TypeFilter.appointments
@@ -197,7 +250,7 @@ class _ScheduleViewState extends State<ScheduleView> {
           ? 'meeting'
           : 'all',
       statusFilter: _statusFilter,
-      startDateTime: start,
+      startDateTime: startQueryDate,
       endDateTime: end,
       limit: _pageSize,
       startAfterDoc: _lastDoc,
@@ -217,6 +270,71 @@ class _ScheduleViewState extends State<ScheduleView> {
       _hasMore = newItems.length >= _pageSize;
       _isLoadingMore = false;
     });
+  }
+
+  Widget _buildViewAllButton() {
+    return true
+        ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: InkWell(
+              onTap: _fetchUpcomingSchedule,
+
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'View Upcoming',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: DrColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: DrColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          )
+        : Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Center(
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: _fetchUpcomingSchedule,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: DrColors.primary,
+                    side: const BorderSide(color: DrColors.primary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
   }
 
   bool _matchesFilters(AppointmentMeetingModel model) {
@@ -241,9 +359,16 @@ class _ScheduleViewState extends State<ScheduleView> {
         _selectedDate.month,
         _selectedDate.day,
       );
-      isWithinCurrentView =
-          model.startTime.isAtSameMomentAs(start) ||
-          model.startTime.isAfter(start);
+      if (_isViewingUpcoming) {
+        isWithinCurrentView =
+            model.startTime.isAtSameMomentAs(start) ||
+            model.startTime.isAfter(start);
+      } else {
+        isWithinCurrentView =
+            model.startTime.year == _selectedDate.year &&
+            model.startTime.month == _selectedDate.month &&
+            model.startTime.day == _selectedDate.day;
+      }
     }
     return matchesType && matchesStatus && isWithinCurrentView;
   }
@@ -716,11 +841,57 @@ class _ScheduleViewState extends State<ScheduleView> {
                         });
                         _fetchInitialSchedule();
                       },
+                      isToday: _isToday(_selectedDate),
+                      isViewingUpcoming: _isViewingUpcoming,
+                      actionButton: _showViewAllButton
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: OutlinedButton(
+                                  onPressed: _fetchUpcomingSchedule,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: DrColors.primary,
+                                    side: const BorderSide(
+                                      color: DrColors.primary,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'View',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          : null,
                     )
                   : ListView.separated(
                       controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
-                      itemCount: filtered.length + (_hasMore ? 1 : 0),
+                      itemCount:
+                          filtered.length +
+                          (_showViewAllButton ? 1 : 0) +
+                          (_hasMore ? 1 : 0) +
+                          ((_isViewingUpcoming && !_hasMore) ? 1 : 0),
                       separatorBuilder: (_, si) {
                         if (si >= filtered.length - 1) {
                           return const SizedBox.shrink();
@@ -739,12 +910,30 @@ class _ScheduleViewState extends State<ScheduleView> {
                       },
                       itemBuilder: (_, i) {
                         if (i == filtered.length) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
+                          if (_showViewAllButton) {
+                            return _buildViewAllButton();
+                          }
+                          if (_hasMore) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: DrColors.primary,
+                                  strokeWidth: 2.5,
+                                ),
+                              ),
+                            );
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Center(
-                              child: CircularProgressIndicator(
-                                color: DrColors.primary,
-                                strokeWidth: 2.5,
+                              child: Text(
+                                'No more upcoming items',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: DrColors.textTertiary,
+                                ),
                               ),
                             ),
                           );
@@ -937,10 +1126,38 @@ class _DateHeader extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   final bool hasFilters;
   final VoidCallback onClearFilters;
-  const _EmptyState({required this.hasFilters, required this.onClearFilters});
+  final bool isToday;
+  final bool isViewingUpcoming;
+  final Widget? actionButton;
+  const _EmptyState({
+    required this.hasFilters,
+    required this.onClearFilters,
+    required this.isToday,
+    required this.isViewingUpcoming,
+    this.actionButton,
+  });
 
   @override
   Widget build(BuildContext context) {
+    String title = 'Nothing scheduled';
+    String subtitle = hasFilters
+        ? 'Try adjusting your filters'
+        : 'No items for this date';
+
+    if (isToday) {
+      if (isViewingUpcoming) {
+        title = 'No upcoming schedule';
+        subtitle = hasFilters
+            ? 'Try adjusting your filters'
+            : 'No upcoming items found';
+      } else {
+        title = 'Nothing scheduled for today';
+        subtitle = hasFilters
+            ? 'Try adjusting your filters'
+            : 'Tap below to see future upcoming items';
+      }
+    }
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -960,7 +1177,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Nothing scheduled',
+            title,
             style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -969,9 +1186,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            hasFilters
-                ? 'Try adjusting your filters'
-                : 'No items for this date',
+            subtitle,
             style: GoogleFonts.inter(
               fontSize: 13,
               color: DrColors.textTertiary,
@@ -983,6 +1198,10 @@ class _EmptyState extends StatelessWidget {
               onPressed: onClearFilters,
               child: const Text('Clear filters'),
             ),
+          ],
+          if (actionButton != null) ...[
+            const SizedBox(height: 20),
+            actionButton!,
           ],
         ],
       ),
@@ -1697,7 +1916,9 @@ class _ScheduleCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: _isAppt ? DrColors.primary : DrColors.success,
+                            color: _isAppt
+                                ? DrColors.primary
+                                : DrColors.success,
                           ),
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -1705,7 +1926,9 @@ class _ScheduleCard extends StatelessWidget {
                           _isAppt ? 'Appointment' : 'Task',
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            color: _isAppt ? DrColors.primary : DrColors.success,
+                            color: _isAppt
+                                ? DrColors.primary
+                                : DrColors.success,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -2352,7 +2575,9 @@ class _VerticalCalendarDialogState extends State<VerticalCalendarDialog> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(foregroundColor: DrColors.primary),
+                  style: TextButton.styleFrom(
+                    foregroundColor: DrColors.primary,
+                  ),
                   child: Text(
                     'CANCEL',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold),
@@ -2361,7 +2586,9 @@ class _VerticalCalendarDialogState extends State<VerticalCalendarDialog> {
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: () => Navigator.pop(context, _selected),
-                  style: TextButton.styleFrom(foregroundColor: DrColors.primary),
+                  style: TextButton.styleFrom(
+                    foregroundColor: DrColors.primary,
+                  ),
                   child: Text(
                     'OK',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold),
