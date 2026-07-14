@@ -916,7 +916,7 @@ class _PatientSelectorState extends State<_PatientSelector> {
             runSpacing: 8,
             children: _selectedList.map((p) {
               return Chip(
-                backgroundColor: DrColors.accentLight,
+                backgroundColor: DrColors.primaryLight,
                 label: Text(
                   p.phone.isNotEmpty ? '${p.name} (${p.phone})' : p.name,
                   style: GoogleFonts.inter(
@@ -928,13 +928,13 @@ class _PatientSelectorState extends State<_PatientSelector> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                    color: DrColors.accent.withValues(alpha: 0.2),
+                    color: DrColors.primary.withValues(alpha: 0.2),
                   ),
                 ),
                 deleteIcon: const Icon(
                   Icons.close_rounded,
                   size: 14,
-                  color: DrColors.accent,
+                  color: DrColors.primary,
                 ),
                 onDeleted: () {
                   setState(() {

@@ -472,7 +472,7 @@ class _NewItemSheet extends StatelessWidget {
                 const SizedBox(height: 10),
                 _SheetOption(
                   icon: Icons.groups_rounded,
-                  color: DrColors.accent,
+                  color: DrColors.success,
                   label: 'New Task',
                   subtitle: 'Schedule a task or review',
                   onTap: () {

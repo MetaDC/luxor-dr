@@ -363,7 +363,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B2260),
+        backgroundColor: DrColors.success,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close_rounded, color: Colors.white),
@@ -661,7 +661,7 @@ class _MeetingFormSheetState extends State<MeetingFormSheet> {
                           ),
                         ),
                         value: _showOnReception,
-                        activeColor: Colors.orange,
+                        activeColor: DrColors.success,
                         onChanged: (v) {
                           setState(() => _showOnReception = v);
                         },
@@ -730,21 +730,21 @@ class _PersonInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: DrColors.accentLight,
+        color: DrColors.successBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: DrColors.accent.withOpacity(0.2)),
+        border: Border.all(color: DrColors.success.withOpacity(0.2)),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 14,
-            backgroundColor: DrColors.accent.withOpacity(0.15),
+            backgroundColor: DrColors.success.withOpacity(0.15),
             child: Text(
               person.name.isNotEmpty ? person.name[0].toUpperCase() : 'P',
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: DrColors.accent,
+                color: DrColors.success,
               ),
             ),
           ),
@@ -934,7 +934,7 @@ class _PersonSelectorState extends State<_PersonSelector> {
             runSpacing: 8,
             children: _selectedList.map((p) {
               return Chip(
-                backgroundColor: DrColors.accentLight,
+                backgroundColor: DrColors.successBg,
                 label: Text(
                   p.phone.isNotEmpty ? '${p.name} (${p.phone})' : p.name,
                   style: GoogleFonts.inter(
@@ -946,13 +946,13 @@ class _PersonSelectorState extends State<_PersonSelector> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                    color: DrColors.accent.withValues(alpha: 0.2),
+                    color: DrColors.success.withValues(alpha: 0.2),
                   ),
                 ),
                 deleteIcon: const Icon(
                   Icons.close_rounded,
                   size: 14,
-                  color: DrColors.accent,
+                  color: DrColors.success,
                 ),
                 onDeleted: () {
                   setState(() {
@@ -1016,13 +1016,13 @@ class _PersonOptionsView extends StatelessWidget {
                           dense: true,
                           leading: CircleAvatar(
                             radius: 14,
-                            backgroundColor: DrColors.accentLight,
+                            backgroundColor: DrColors.successBg,
                             child: Text(
                               p.name[0].toUpperCase(),
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: DrColors.accent,
+                                color: DrColors.success,
                               ),
                             ),
                           ),
@@ -1174,7 +1174,7 @@ class _QuickCreatePersonDialogState extends State<_QuickCreatePersonDialog> {
                     child: ElevatedButton(
                       onPressed: _loading ? null : _save,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: DrColors.accent,
+                        backgroundColor: DrColors.success,
                       ),
                       child: _loading
                           ? const SizedBox(

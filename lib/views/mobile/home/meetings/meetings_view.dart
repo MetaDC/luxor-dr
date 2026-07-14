@@ -83,7 +83,7 @@ class _MeetingsViewState extends State<MeetingsView> {
           ),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: DrColors.accent),
+          colorScheme: const ColorScheme.light(primary: DrColors.success),
         ),
         child: child!,
       ),
@@ -139,7 +139,7 @@ class _MeetingsViewState extends State<MeetingsView> {
                                 '${DateFormat('MMM d').format(_dateRange!.start)} – ${DateFormat('MMM d').format(_dateRange!.end)}',
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
-                                  color: DrColors.accent,
+                                  color: DrColors.success,
                                   fontWeight: FontWeight.w600,
                                 ),
                               )
@@ -166,7 +166,7 @@ class _MeetingsViewState extends State<MeetingsView> {
                                   vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: DrColors.accent.withOpacity(0.1),
+                                  color: DrColors.success.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -175,14 +175,14 @@ class _MeetingsViewState extends State<MeetingsView> {
                                     const Icon(
                                       Icons.close_rounded,
                                       size: 14,
-                                      color: DrColors.accent,
+                                      color: DrColors.success,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'Clear Range',
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
-                                        color: DrColors.accent,
+                                        color: DrColors.success,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -208,14 +208,14 @@ class _MeetingsViewState extends State<MeetingsView> {
                                     const Icon(
                                       Icons.date_range_rounded,
                                       size: 14,
-                                      color: DrColors.accent,
+                                      color: DrColors.success,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'Range',
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
-                                        color: DrColors.accent,
+                                        color: DrColors.success,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -251,12 +251,12 @@ class _MeetingsViewState extends State<MeetingsView> {
                               width: 52,
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? DrColors.accent
+                                    ? DrColors.success
                                     : DrColors.surface,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: isSelected
-                                      ? DrColors.accent
+                                      ? DrColors.success
                                       : DrColors.border,
                                 ),
                               ),
@@ -323,12 +323,12 @@ class _MeetingsViewState extends State<MeetingsView> {
                             ),
                             decoration: BoxDecoration(
                               color: active
-                                  ? DrColors.accent
+                                  ? DrColors.success
                                   : DrColors.surface,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: active
-                                    ? DrColors.accent
+                                    ? DrColors.success
                                     : DrColors.border,
                               ),
                             ),
@@ -357,7 +357,7 @@ class _MeetingsViewState extends State<MeetingsView> {
               child: _loading
                   ? const Center(
                       child: CircularProgressIndicator(
-                        color: DrColors.accent,
+                        color: DrColors.success,
                         strokeWidth: 2.5,
                       ),
                     )
@@ -431,13 +431,13 @@ class _MeetingCard extends StatelessWidget {
     if (label == 'Passed' || label == 'Cancelled') return DrColors.textTertiary;
     if (label == 'Just passed') return DrColors.warning;
     if (label == 'Completed') return DrColors.success;
-    return DrColors.accent;
+    return DrColors.success;
   }
 
   Color get _accentColor {
     if (meeting.status == 'Cancelled') return DrColors.error;
     if (meeting.status == 'Completed') return DrColors.success;
-    return DrColors.accent;
+    return DrColors.success;
   }
 
   void _openEdit(BuildContext context) {
@@ -696,10 +696,10 @@ class _MeetingCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: const BoxDecoration(
-            color: DrColors.accentLight,
+            color: DrColors.successBg,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, size: 18, color: DrColors.accent),
+          child: Icon(icon, size: 18, color: DrColors.success),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -919,7 +919,7 @@ class _MeetingCard extends StatelessWidget {
                     child: _ActionButton(
                       icon: Icons.edit_rounded,
                       label: 'Edit',
-                      color: DrColors.accent,
+                      color: DrColors.success,
                       onTap: () => _openEdit(context),
                     ),
                   ),

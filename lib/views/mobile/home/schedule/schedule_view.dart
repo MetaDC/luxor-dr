@@ -530,12 +530,12 @@ class _ScheduleViewState extends State<ScheduleView> {
                                       height: 30,
                                       decoration: BoxDecoration(
                                         color: isSelected
-                                            ? DrColors.accent
+                                            ? DrColors.primary
                                             : Colors.transparent,
                                         shape: BoxShape.circle,
                                         border: isToday && !isSelected
                                             ? Border.all(
-                                                color: DrColors.accent,
+                                                color: DrColors.primary,
                                                 width: 1.5,
                                               )
                                             : null,
@@ -549,7 +549,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                                             color: isSelected
                                                 ? Colors.white
                                                 : isToday
-                                                ? DrColors.accent
+                                                ? DrColors.primary
                                                 : DrColors.textPrimary,
                                           ),
                                         ),
@@ -805,7 +805,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                     child: Text(
                       'ADD TASK',
                       style: GoogleFonts.inter(
-                        color: DrColors.accent,
+                        color: DrColors.success,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                         letterSpacing: 0.5,
@@ -835,7 +835,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                     child: Text(
                       'ADD APPOINTMENT',
                       style: GoogleFonts.inter(
-                        color: DrColors.accent,
+                        color: DrColors.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                         letterSpacing: 0.5,
@@ -887,7 +887,7 @@ class _DateHeader extends StatelessWidget {
           Expanded(
             child: Divider(
               color: isToday
-                  ? DrColors.accent.withValues(alpha: 0.3)
+                  ? DrColors.primary.withValues(alpha: 0.3)
                   : DrColors.border,
               thickness: 1,
             ),
@@ -911,7 +911,7 @@ class _DateHeader extends StatelessWidget {
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
-                color: DrColors.accent,
+                color: DrColors.primary,
               ),
             ),
           ),
@@ -919,7 +919,7 @@ class _DateHeader extends StatelessWidget {
           Expanded(
             child: Divider(
               color: isToday
-                  ? DrColors.accent.withValues(alpha: 0.3)
+                  ? DrColors.primary.withValues(alpha: 0.3)
                   : DrColors.border,
               thickness: 1,
             ),
@@ -1045,7 +1045,7 @@ class _ScheduleCard extends StatelessWidget {
     }
   }
 
-  Color get _typeColor => _isAppt ? DrColors.primary : DrColors.accent;
+  Color get _typeColor => _isAppt ? DrColors.primary : DrColors.success;
 
   /*   String get _mainTitle {
     if (item.personName.isNotEmpty) {
@@ -1697,7 +1697,7 @@ class _ScheduleCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: _isAppt ? DrColors.primary : Colors.green,
+                            color: _isAppt ? DrColors.primary : DrColors.success,
                           ),
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -1705,7 +1705,7 @@ class _ScheduleCard extends StatelessWidget {
                           _isAppt ? 'Appointment' : 'Task',
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            color: _isAppt ? DrColors.primary : Colors.green,
+                            color: _isAppt ? DrColors.primary : DrColors.success,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -2182,7 +2182,7 @@ class _VerticalCalendarDialogState extends State<VerticalCalendarDialog> {
           // Header Container (Orange Theme)
           Container(
             width: double.infinity,
-            color: DrColors.accent,
+            color: DrColors.primary,
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2299,7 +2299,7 @@ class _VerticalCalendarDialogState extends State<VerticalCalendarDialog> {
                           child: Container(
                             decoration: BoxDecoration(
                               color: isSelectedYr
-                                  ? DrColors.accent
+                                  ? DrColors.primary
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
@@ -2352,7 +2352,7 @@ class _VerticalCalendarDialogState extends State<VerticalCalendarDialog> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(foregroundColor: DrColors.accent),
+                  style: TextButton.styleFrom(foregroundColor: DrColors.primary),
                   child: Text(
                     'CANCEL',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold),
@@ -2361,7 +2361,7 @@ class _VerticalCalendarDialogState extends State<VerticalCalendarDialog> {
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: () => Navigator.pop(context, _selected),
-                  style: TextButton.styleFrom(foregroundColor: DrColors.accent),
+                  style: TextButton.styleFrom(foregroundColor: DrColors.primary),
                   child: Text(
                     'OK',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold),
@@ -2460,7 +2460,7 @@ class _MonthWidget extends StatelessWidget {
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: isSelected ? DrColors.accent : Colors.transparent,
+                      color: isSelected ? DrColors.primary : Colors.transparent,
                       shape: BoxShape.circle,
                     ),
                     child: Center(

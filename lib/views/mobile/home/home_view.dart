@@ -98,7 +98,7 @@ class _HomeViewState extends State<HomeView> {
                               Expanded(
                                 child: _StatCard(
                                   icon: Icons.groups_rounded,
-                                  color: DrColors.accent,
+                                  color: DrColors.success,
                                   count: ctrl.todayMeetingsCount,
                                   label: 'Tasks',
                                   onTap: () => context.go('/home/schedule'),
@@ -287,7 +287,7 @@ class _FullCard extends StatelessWidget {
           ? const EdgeInsets.symmetric(horizontal: 6)
           : const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: DrColors.primary,
+        color: _isAppt ? DrColors.primary : DrColors.success,
 
         borderRadius: BorderRadius.circular(22),
         // boxShadow: [
@@ -682,7 +682,7 @@ class _QuickActions extends StatelessWidget {
               ),
               _ActionRow(
                 icon: Icons.groups_rounded,
-                color: DrColors.accent,
+                color: DrColors.success,
                 label: 'New Task',
                 subtitle: 'Schedule a task or review',
                 isLast: true,

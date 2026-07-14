@@ -687,7 +687,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
                     child: Text(
                       'ADD TASK',
                       style: GoogleFonts.inter(
-                        color: DrColors.accent,
+                        color: DrColors.success,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                         letterSpacing: 0.5,
@@ -702,7 +702,7 @@ class _ContactDetailViewState extends State<ContactDetailView> {
                     child: Text(
                       'ADD APPOINTMENT',
                       style: GoogleFonts.inter(
-                        color: DrColors.accent,
+                        color: DrColors.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                         letterSpacing: 0.5,
@@ -732,7 +732,7 @@ class _RecordCard extends StatelessWidget {
   Color get _accentColor {
     if (record.status == 'Cancelled') return DrColors.error;
     if (record.status == 'Completed') return DrColors.success;
-    return _isAppt ? DrColors.primary : DrColors.accent;
+    return _isAppt ? DrColors.primary : DrColors.success;
   }
 
   String get _title {
@@ -769,15 +769,15 @@ class _RecordCard extends StatelessWidget {
     final label = _statusLabel;
     if (label == 'Passed' || label == 'Cancelled') return DrColors.textTertiary;
     if (label == 'In progress' || label.startsWith('In ')) {
-      return _isAppt ? DrColors.primary : DrColors.accent;
+      return _isAppt ? DrColors.primary : DrColors.success;
     }
     if (label == 'Completed') return DrColors.success;
-    return _isAppt ? DrColors.primary : DrColors.accent;
+    return _isAppt ? DrColors.primary : DrColors.success;
   }
 
   void _showDetailsDialog(BuildContext context) {
     final statusColor = _statusColor();
-    final themeColor = _isAppt ? DrColors.primary : DrColors.accent;
+    final themeColor = _isAppt ? DrColors.primary : DrColors.success;
 
     final hasSummary =
         record.status == 'Completed' && (record.summary ?? '').isNotEmpty;
