@@ -1075,8 +1075,8 @@ class _DateHeader extends StatelessWidget {
         children: [
           Expanded(
             child: Divider(
-              color: isToday
-                  ? DrColors.primary.withValues(alpha: 0.3)
+              color: true
+                  ? DrColors.accent.withValues(alpha: 0.3)
                   : DrColors.border,
               thickness: 1,
             ),
@@ -1100,16 +1100,16 @@ class _DateHeader extends StatelessWidget {
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
-                color: DrColors.primary,
+                color: DrColors.accent,
               ),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Divider(
-              color: isToday
-                  ? DrColors.primary.withValues(alpha: 0.3)
-                  : DrColors.border,
+              color: true
+                  ? DrColors.accent.withValues(alpha: 0.3)
+                  : DrColors.accent,
               thickness: 1,
             ),
           ),
@@ -1294,6 +1294,10 @@ class _ScheduleCard extends StatelessWidget {
     if (diff.inMinutes < 0) return 'Missed';
     final h = diff.inHours;
     if (h == 0) return 'In ${diff.inMinutes}m';
+    if (h >= 24) {
+      final d = diff.inDays;
+      return 'In ${d}d';
+    }
     return 'In ${h}h';
   }
 
