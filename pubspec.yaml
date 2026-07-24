@@ -1,6 +1,6 @@
 name: luxor_dr
 description: "Luxor Doctor App"
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+17
 
 environment:
@@ -31,7 +31,6 @@ dependencies:
   url_launcher: ^6.3.1
   connectivity_plus: ^6.0.5
   package_info_plus: ^10.2.0
-
 
 dev_dependencies:
   flutter_test:
