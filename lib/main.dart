@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,18 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (Platform.isIOS) {
+    flutterLocalNotificationsPlugin.show(
+      DateTime.now().microsecond,
+      message.data['title'],
+      message.data['body'],
+      const NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: iOSPlatformChannelSpecifics,
+      ),
+    );
+  }
+  /*  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Messages with a notification payload are displayed automatically by the OS
   // in background/terminated state — no manual show() needed here.
   // Only data-only messages (message.notification == null) would need manual display.
@@ -38,7 +51,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       ),
       payload: message.data['payload'],
     );
-  }
+  } */
 }
 
 Future<void> _onDidReceiveBackgroundNotification(
@@ -110,7 +123,7 @@ void main() async {
         _onDidReceiveBackgroundNotification,
   );
 
-  // Show notifications when the app is in the foreground.
+  /*   // Show notifications when the app is in the foreground.
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final title = message.notification?.title ?? message.data['title'];
     final body = message.notification?.body ?? message.data['body'];
@@ -126,7 +139,7 @@ void main() async {
         payload: message.data['payload'],
       );
     }
-  });
+  }); */
 
   Get.put(AuthCtrl());
   Get.put(HomeCtrl());

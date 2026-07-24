@@ -40,6 +40,8 @@ class _ScheduleViewState extends State<ScheduleView> {
   late _TypeFilter _typeFilter;
 
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _listKey = GlobalKey();
+  final Map<DateTime, GlobalKey> _dateKeys = {};
 
   // PageView weeks integration
   late final DateTime _baseMonday;
@@ -86,6 +88,31 @@ class _ScheduleViewState extends State<ScheduleView> {
     _fetchInitialSchedule();
   }
 
+  void _selectDateFromScroll(DateTime date) {
+    final targetMonday = date.subtract(Duration(days: date.weekday - 1));
+    final targetMondayClean = DateTime(
+      targetMonday.year,
+      targetMonday.month,
+      targetMonday.day,
+    );
+
+    setState(() {
+      _selectedDate = DateTime(date.year, date.month, date.day);
+      _visibleWeekMonday = targetMondayClean;
+    });
+
+    final weekDiff = (targetMondayClean.difference(_baseMonday).inDays / 7)
+        .round();
+    final targetPage = 5000 + weekDiff;
+
+    if (_pageController.hasClients &&
+        _pageController.page?.round() != targetPage) {
+      _isPageAnimating = true;
+      _pageController.jumpToPage(targetPage);
+      _isPageAnimating = false;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +130,38 @@ class _ScheduleViewState extends State<ScheduleView> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       _fetchNextSchedulePage();
+    }
+
+    if (_isViewingUpcoming) {
+      final listContext = _listKey.currentContext;
+      if (listContext != null) {
+        final listBox = listContext.findRenderObject() as RenderBox?;
+        if (listBox != null) {
+          final listTop = listBox.localToGlobal(Offset.zero).dy;
+          DateTime? activeDate;
+          double maxPassedY = -double.infinity;
+          for (final entry in _dateKeys.entries) {
+            final key = entry.value;
+            final ctx = key.currentContext;
+            if (ctx != null) {
+              final box = ctx.findRenderObject() as RenderBox?;
+              if (box != null && box.hasSize) {
+                final y = box.localToGlobal(Offset.zero).dy;
+                // Check if this date group has scrolled past listTop or is near it
+                if (y <= listTop + 60) {
+                  if (y > maxPassedY) {
+                    maxPassedY = y;
+                    activeDate = entry.key;
+                  }
+                }
+              }
+            }
+          }
+          if (activeDate != null && !_isSameDay(activeDate, _selectedDate)) {
+            _selectDateFromScroll(activeDate);
+          }
+        }
+      }
     }
   }
 
@@ -235,7 +294,15 @@ class _ScheduleViewState extends State<ScheduleView> {
 
     final DateTime? end;
     final DateTime startQueryDate;
-    if (_isToday(_selectedDate)) {
+    if (_isViewingUpcoming) {
+      final todayStart = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      );
+      startQueryDate = todayStart.add(const Duration(days: 1));
+      end = null;
+    } else if (_isToday(_selectedDate)) {
       startQueryDate = start.add(const Duration(days: 1));
       end = null;
     } else {
@@ -884,82 +951,99 @@ class _ScheduleViewState extends State<ScheduleView> {
                             )
                           : null,
                     )
-                  : ListView.separated(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
-                      itemCount:
-                          filtered.length +
-                          (_showViewAllButton ? 1 : 0) +
-                          (_hasMore ? 1 : 0) +
-                          ((_isViewingUpcoming && !_hasMore) ? 1 : 0),
-                      separatorBuilder: (_, si) {
-                        if (si >= filtered.length - 1) {
-                          return const SizedBox.shrink();
-                        }
-                        if (!_isSameDay(
-                          filtered[si].startTime,
-                          filtered[si + 1].startTime,
-                        )) {
-                          return const SizedBox.shrink();
-                        }
-                        return const Divider(
-                          height: 1,
-                          thickness: 0.5,
-                          color: DrColors.border,
+                  : () {
+                      for (final item in filtered) {
+                        final keyDay = DateTime(
+                          item.startTime.year,
+                          item.startTime.month,
+                          item.startTime.day,
                         );
-                      },
-                      itemBuilder: (_, i) {
-                        if (i == filtered.length) {
-                          if (_showViewAllButton) {
-                            return _buildViewAllButton();
+                        _dateKeys.putIfAbsent(keyDay, () => GlobalKey());
+                      }
+                      return ListView.separated(
+                        key: _listKey,
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 32),
+                        itemCount:
+                            filtered.length +
+                            (_showViewAllButton ? 1 : 0) +
+                            (_hasMore ? 1 : 0) +
+                            ((_isViewingUpcoming && !_hasMore) ? 1 : 0),
+                        separatorBuilder: (_, si) {
+                          if (si >= filtered.length - 1) {
+                            return const SizedBox.shrink();
                           }
-                          if (_hasMore) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 20),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: DrColors.primary,
-                                  strokeWidth: 2.5,
-                                ),
-                              ),
-                            );
+                          if (!_isSameDay(
+                            filtered[si].startTime,
+                            filtered[si + 1].startTime,
+                          )) {
+                            return const SizedBox.shrink();
                           }
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 24),
-                            child: Center(
-                              child: Text(
-                                'No more upcoming items',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: DrColors.textTertiary,
-                                ),
-                              ),
-                            ),
+                          return const Divider(
+                            height: 1,
+                            thickness: 0.5,
+                            color: DrColors.border,
                           );
-                        }
-
-                        final item = filtered[i];
-                        final showHeader =
-                            i == 0 ||
-                            !_isSameDay(
-                              item.startTime,
-                              filtered[i - 1].startTime,
+                        },
+                        itemBuilder: (_, i) {
+                          if (i == filtered.length) {
+                            if (_showViewAllButton) {
+                              return _buildViewAllButton();
+                            }
+                            if (_hasMore) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: DrColors.primary,
+                                    strokeWidth: 2.5,
+                                  ),
+                                ),
+                              );
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Center(
+                                child: Text(
+                                  'No more upcoming items',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: DrColors.textTertiary,
+                                  ),
+                                ),
+                              ),
                             );
+                          }
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (showHeader) _DateHeader(date: item.startTime),
-                            _ScheduleCard(
-                              item: item,
-                              onRefresh: _refresh,
-                              onItemUpdated: _onItemUpdated,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+                          final item = filtered[i];
+                          final showHeader =
+                              i == 0 ||
+                              !_isSameDay(
+                                item.startTime,
+                                filtered[i - 1].startTime,
+                              );
+                          final keyDay = DateTime(
+                            item.startTime.year,
+                            item.startTime.month,
+                            item.startTime.day,
+                          );
+
+                          return Column(
+                            key: showHeader ? _dateKeys[keyDay] : null,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (showHeader) _DateHeader(date: item.startTime),
+                              _ScheduleCard(
+                                item: item,
+                                onRefresh: _refresh,
+                                onItemUpdated: _onItemUpdated,
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    }(),
             ),
           ],
         ),
