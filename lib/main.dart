@@ -123,23 +123,25 @@ void main() async {
         _onDidReceiveBackgroundNotification,
   );
 
-  /*   // Show notifications when the app is in the foreground.
+  // Show notifications when the app is in the foreground.
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    final title = message.notification?.title ?? message.data['title'];
-    final body = message.notification?.body ?? message.data['body'];
-    if (title != null || body != null) {
-      flutterLocalNotificationsPlugin.show(
-        DateTime.now().microsecond,
-        title,
-        body,
-        const NotificationDetails(
-          android: androidPlatformChannelSpecifics,
-          iOS: iOSPlatformChannelSpecifics,
-        ),
-        payload: message.data['payload'],
-      );
+    if (Platform.isAndroid) {
+      final title = message.notification?.title ?? message.data['title'];
+      final body = message.notification?.body ?? message.data['body'];
+      if (title != null || body != null) {
+        flutterLocalNotificationsPlugin.show(
+          DateTime.now().microsecond,
+          title,
+          body,
+          const NotificationDetails(
+            android: androidPlatformChannelSpecifics,
+            iOS: iOSPlatformChannelSpecifics,
+          ),
+          payload: message.data['payload'],
+        );
+      }
     }
-  }); */
+  });
 
   Get.put(AuthCtrl());
   Get.put(HomeCtrl());
