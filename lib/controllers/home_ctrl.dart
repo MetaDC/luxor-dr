@@ -279,9 +279,24 @@ class HomeCtrl extends GetxController {
 
   Future<bool> createAppointment(AppointmentMeetingModel appt) async {
     try {
+      final query = await FBFireStore.apptAndMeeting
+          .where('personId', isEqualTo: appt.personId)
+          .where('docType', isEqualTo: 'appointment')
+          .get();
+      final hasPrevious = query.docs.any((doc) {
+        final data = doc.data();
+        return data['status'] != 'Cancelled' && doc.id != appt.docId;
+      });
+      final isFirst = !hasPrevious;
+
       final ref = FBFireStore.apptAndMeeting.doc();
       final doctorId = AuthCtrl.to.currentDoctor?.docId;
-      await ref.set({...appt.toJson(), 'docId': ref.id, 'updatedById': doctorId});
+      await ref.set({
+        ...appt.toJson(),
+        'docId': ref.id,
+        'updatedById': doctorId,
+        'isFirstAppointment': isFirst,
+      });
       return true;
     } catch (e) {
       debugPrint(e.toString());
@@ -291,8 +306,22 @@ class HomeCtrl extends GetxController {
 
   Future<bool> updateAppointment(AppointmentMeetingModel appt) async {
     try {
+      final query = await FBFireStore.apptAndMeeting
+          .where('personId', isEqualTo: appt.personId)
+          .where('docType', isEqualTo: 'appointment')
+          .get();
+      final hasPrevious = query.docs.any((doc) {
+        final data = doc.data();
+        return data['status'] != 'Cancelled' && doc.id != appt.docId;
+      });
+      final isFirst = !hasPrevious;
+
       final doctorId = AuthCtrl.to.currentDoctor?.docId;
-      await FBFireStore.apptAndMeeting.doc(appt.docId).update({...appt.toJson(), 'updatedById': doctorId});
+      await FBFireStore.apptAndMeeting.doc(appt.docId).update({
+        ...appt.toJson(),
+        'updatedById': doctorId,
+        'isFirstAppointment': isFirst,
+      });
       return true;
     } catch (e) {
       debugPrint(e.toString());

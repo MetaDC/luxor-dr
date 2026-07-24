@@ -42,6 +42,7 @@ class AppointmentMeetingModel {
   final bool showOnReception;
   final List<Map<String, dynamic>> persons;
   final bool? checkedIn;
+  final bool? isFirstAppointment;
 
   AppointmentMeetingModel({
     required this.docId,
@@ -71,6 +72,7 @@ class AppointmentMeetingModel {
     required this.showOnReception,
     this.persons = const [],
     this.checkedIn,
+    this.isFirstAppointment,
   });
 
   factory AppointmentMeetingModel.fromJson(Map<String, dynamic> json) {
@@ -105,6 +107,7 @@ class AppointmentMeetingModel {
               .toList() ??
           const [],
       checkedIn: json['checkedIn'],
+      isFirstAppointment: json.containsKey('isFirstAppointment') ? json['isFirstAppointment'] : null,
     );
   }
 
@@ -143,6 +146,7 @@ class AppointmentMeetingModel {
               .toList() ??
           const [],
       checkedIn: json['checkedIn'],
+      isFirstAppointment: json.containsKey('isFirstAppointment') ? json['isFirstAppointment'] : null,
     );
   }
 
@@ -176,6 +180,7 @@ class AppointmentMeetingModel {
       'showOnReception': showOnReception,
       'persons': persons,
       'checkedIn': checkedIn,
+      'isFirstAppointment': isFirstAppointment,
     };
   }
 
@@ -207,6 +212,7 @@ class AppointmentMeetingModel {
     bool? showOnReception,
     List<Map<String, dynamic>>? persons,
     bool? checkedIn,
+    bool? isFirstAppointment,
   }) {
     return AppointmentMeetingModel(
       docId: docId ?? this.docId,
@@ -236,6 +242,7 @@ class AppointmentMeetingModel {
       showOnReception: showOnReception ?? this.showOnReception,
       persons: persons ?? this.persons,
       checkedIn: checkedIn ?? this.checkedIn,
+      isFirstAppointment: isFirstAppointment ?? this.isFirstAppointment,
     );
   }
 }

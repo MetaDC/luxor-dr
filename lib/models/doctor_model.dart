@@ -13,6 +13,7 @@ class DoctorModel {
   final DateTime updatedAt;
   final bool isActive;
   final int priorityNo;
+  final String? colorCode;
 
   DoctorModel({
     required this.docId,
@@ -27,6 +28,7 @@ class DoctorModel {
     required this.updatedAt,
     this.isActive = true,
     this.priorityNo = 0,
+    this.colorCode,
   });
 
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,7 @@ class DoctorModel {
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: json['isActive'] ?? true,
       priorityNo: json['priorityNo'] ?? 0,
+      colorCode: json.containsKey('colorCode') ? json['colorCode'] : null,
     );
   }
 
@@ -63,6 +66,7 @@ class DoctorModel {
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: json['isActive'] ?? true,
       priorityNo: json['priorityNo'] ?? 0,
+      colorCode: json.containsKey('colorCode') ? json['colorCode'] : null,
     );
   }
 
@@ -83,6 +87,7 @@ class DoctorModel {
       updatedAt: (json['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: json['isActive'] ?? true,
       priorityNo: json['priorityNo'] ?? 0,
+      colorCode: json.containsKey('colorCode') ? json['colorCode'] : null,
     );
   }
 
